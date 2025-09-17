@@ -2,3 +2,7 @@
 
 # Processed output directory
 processed/
+
+# Output directory with Matrixify CSV files
+output/
+output/matrixify_orders.csv
