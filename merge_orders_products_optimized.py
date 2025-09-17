@@ -211,9 +211,30 @@ def merge_data_simple(orders_path, columns, sku_mapping):
 def merge_data_chunked(orders_path, columns, sku_mapping):
     """
     Merge orders and products data using chunked processing for memory efficiency.
+    Since pd.read_excel doesn't support chunksize, we'll convert to CSV first and then process in chunks.
     """
     try:
         logger.info(f"Starting chunked processing with chunk size: {CHUNK_SIZE:,}")
+        logger.info("Note: Converting Excel to CSV first for chunked processing...")
+        
+        # Create temporary CSV file for chunked processing
+        temp_csv_path = Path("temp_orders.csv")
+        
+        # Convert Excel to CSV first
+        logger.info("Converting Excel file to CSV for chunked processing...")
+        conversion_start = time.time()
+        
+        # Read Excel file and save as CSV
+        orders_df_full = pd.read_excel(orders_path, engine='openpyxl')
+        orders_df_full.to_csv(temp_csv_path, index=False)
+        total_records = len(orders_df_full)
+        
+        # Clean up the full dataframe to free memory
+        del orders_df_full
+        gc.collect()
+        
+        conversion_time = time.time() - conversion_start
+        logger.info(f"Conversion completed in {conversion_time:.2f} seconds. Total records: {total_records:,}")
         
         # Initialize counters
         total_processed = 0
@@ -231,20 +252,17 @@ def merge_data_chunked(orders_path, columns, sku_mapping):
         
         start_time = time.time()
         
-        # Process file in chunks
-        for chunk_df in pd.read_excel(orders_path, chunksize=CHUNK_SIZE, engine='openpyxl'):
+        # Calculate total chunks
+        total_chunks = (total_records + CHUNK_SIZE - 1) // CHUNK_SIZE
+        logger.info(f"Will process {total_chunks} chunks of up to {CHUNK_SIZE:,} records each")
+        
+        # Process CSV file in chunks
+        for chunk_df in pd.read_csv(temp_csv_path, chunksize=CHUNK_SIZE):
             chunk_num += 1
-            
-            # Estimate total chunks (approximate)
-            if chunk_num == 1:
-                # Rough estimate based on file size
-                file_size = orders_path.stat().st_size
-                estimated_total_chunks = max(1, file_size // (1024 * 1024))  # Rough estimate
-                logger.info(f"Estimated total chunks: ~{estimated_total_chunks}")
             
             # Process the chunk
             processed_chunk, mapped_count, unmapped_count = process_orders_chunk(
-                chunk_df, sku_mapping, chunk_num, "?"
+                chunk_df, sku_mapping, chunk_num, total_chunks
             )
             
             # Reorder columns
@@ -268,6 +286,11 @@ def merge_data_chunked(orders_path, columns, sku_mapping):
             # Clean up chunk to free memory
             del chunk_df, processed_chunk
             gc.collect()
+        
+        # Clean up temporary CSV file
+        if temp_csv_path.exists():
+            temp_csv_path.unlink()
+            logger.info("Cleaned up temporary CSV file")
         
         # Combine all processed chunks and save to Excel
         logger.info("Combining processed chunks and saving to Excel...")
@@ -303,13 +326,15 @@ def merge_data_chunked(orders_path, columns, sku_mapping):
         gc.collect()
         
         processing_time = time.time() - start_time
+        total_time_with_conversion = processing_time + conversion_time
         
         logger.info(f"\n{'='*60}")
         logger.info(f"Processing completed successfully!")
         logger.info(f"Total records processed: {total_processed:,}")
         logger.info(f"Successfully mapped: {total_mapped:,} ({total_mapped/total_processed*100:.1f}%)")
         logger.info(f"Unmapped records: {total_unmapped:,} ({total_unmapped/total_processed*100:.1f}%)")
-        logger.info(f"Processing time: {processing_time:.2f} seconds")
+        logger.info(f"Processing time (excl. conversion): {processing_time:.2f} seconds")
+        logger.info(f"Total time (incl. conversion): {total_time_with_conversion:.2f} seconds")
         logger.info(f"Processing rate: {total_processed/processing_time:.0f} records/second")
         logger.info(f"Output file: {output_path}")
         logger.info(f"{'='*60}")
@@ -318,6 +343,10 @@ def merge_data_chunked(orders_path, columns, sku_mapping):
     
     except Exception as e:
         logger.error(f"Error in chunked processing: {e}")
+        # Clean up temporary file on error
+        temp_csv_path = Path("temp_orders.csv")
+        if temp_csv_path.exists():
+            temp_csv_path.unlink()
         sys.exit(1)
 
 
