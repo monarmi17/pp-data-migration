@@ -96,44 +96,208 @@ def generate_timestamp_from_date(date_str):
         return datetime.now().strftime('%-m/%-d/%Y %-H:%M')
 
 
-def load_processed_orders():
-    """Load the processed orders data."""
+def get_orders_info():
+    """Get basic information about processed orders file without loading all data."""
     try:
         orders_path = Path("processed/orders.xlsx")
         if not orders_path.exists():
             raise FileNotFoundError(f"Processed orders file not found: {orders_path}")
         
-        logger.info("Loading processed orders data...")
-        start_time = time.time()
+        # Read just the first few rows to get column info and estimate size
+        sample_df = pd.read_excel(orders_path, nrows=100, engine='openpyxl')
         
-        # Load the processed orders
-        orders_df = pd.read_excel(orders_path, engine='openpyxl')
+        # Get total row count efficiently
+        logger.info("Analyzing processed orders file structure...")
         
-        load_time = time.time() - start_time
-        logger.info(f"Loaded orders data: {len(orders_df):,} records in {load_time:.2f} seconds")
-        
-        # Validate required columns
+        # Check for required columns
         required_columns = [
             'Ticket number', 'Date', 'Email', 'Product Code', 
             'Product quantity', 'Price ($)'
         ]
         
-        missing_columns = [col for col in required_columns if col not in orders_df.columns]
+        missing_columns = [col for col in required_columns if col not in sample_df.columns]
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
         
-        logger.info(f"Available columns: {list(orders_df.columns)}")
-        return orders_df
+        logger.info(f"Available columns: {list(sample_df.columns)}")
+        
+        # Get file size to determine processing method
+        file_size_mb = orders_path.stat().st_size / (1024 * 1024)
+        logger.info(f"Processed orders file size: {file_size_mb:.1f} MB")
+        
+        return orders_path, sample_df.columns.tolist(), file_size_mb
     
     except Exception as e:
-        logger.error(f"Error loading processed orders: {e}")
+        logger.error(f"Error analyzing processed orders file: {e}")
         sys.exit(1)
 
 
-def convert_to_matrixify_format(orders_df):
-    """Convert orders data to Matrixify CSV format."""
+def convert_to_matrixify_format_chunked(orders_path, columns):
+    """Convert orders data to Matrixify CSV format using chunked processing for large files."""
     try:
-        logger.info("Converting to Matrixify format...")
+        logger.info("Starting chunked Matrixify conversion...")
+        logger.info("Note: Converting Excel to CSV first for chunked processing...")
+        
+        # Create temporary CSV file for chunked processing
+        temp_csv_path = Path("temp_processed_orders.csv")
+        
+        # Convert Excel to CSV first
+        logger.info("Converting Excel file to CSV for chunked processing...")
+        conversion_start = time.time()
+        
+        # Read Excel file and save as CSV
+        orders_df_full = pd.read_excel(orders_path, engine='openpyxl')
+        orders_df_full.to_csv(temp_csv_path, index=False)
+        total_records = len(orders_df_full)
+        
+        # Clean up the full dataframe to free memory
+        del orders_df_full
+        import gc
+        gc.collect()
+        
+        conversion_time = time.time() - conversion_start
+        logger.info(f"Conversion completed in {conversion_time:.2f} seconds. Total records: {total_records:,}")
+        
+        # Initialize counters
+        total_processed = 0
+        total_mapped = 0
+        total_unmapped = 0
+        chunk_num = 0
+        
+        # Create output directory
+        output_dir = Path("output")
+        output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / "matrixify_orders.csv"
+        
+        # Initialize list to store processed chunks
+        processed_chunks = []
+        
+        start_time = time.time()
+        
+        # Configuration for chunked processing
+        CHUNK_SIZE = 50000  # Process orders in chunks of 50k rows
+        
+        # Calculate total chunks
+        total_chunks = (total_records + CHUNK_SIZE - 1) // CHUNK_SIZE
+        logger.info(f"Will process {total_chunks} chunks of up to {CHUNK_SIZE:,} records each")
+        
+        # Process CSV file in chunks
+        for chunk_df in pd.read_csv(temp_csv_path, chunksize=CHUNK_SIZE):
+            chunk_num += 1
+            
+            # Filter out rows where Product Code is NaN (unmapped products)
+            initial_count = len(chunk_df)
+            chunk_df = chunk_df.dropna(subset=['Product Code'])
+            filtered_count = len(chunk_df)
+            
+            if filtered_count < initial_count:
+                unmapped_count = initial_count - filtered_count
+                total_unmapped += unmapped_count
+                logger.warning(f"Chunk {chunk_num}/{total_chunks}: Filtered out {unmapped_count} rows with missing Product Code")
+            
+            # Process the chunk
+            matrixify_data = []
+            
+            for index, row in chunk_df.iterrows():
+                # Generate timestamp from date
+                processed_at = generate_timestamp_from_date(row['Date'])
+                
+                # Create Matrixify row
+                matrixify_row = {
+                    'Name': str(int(row['Ticket number'])),  # Convert to string, ensure no decimals
+                    'Command': 'NEW',
+                    'Processed At': processed_at,
+                    'Customer: Email': str(row['Email']).strip(),
+                    'Line: Type': 'Line Item',
+                    'Line: SKU': str(row['Product Code']).strip(),  # Keep as string, don't force to int
+                    'Line: Quantity': int(row['Product quantity']),
+                    'Line: Price': float(row['Price ($)']),
+                    'Line: Grams': 0,
+                    'Line: Requires Shipping': 'TRUE',
+                    'Line: Vendor': '',  # Empty as per template
+                    'Transaction: Kind': 'sale',
+                    'Transaction: Processed At': processed_at,
+                    'Transaction: Amount': float(row['Price ($)']),
+                    'Payment: Status': 'paid',
+                    'Fulfillment: Status': 'success',
+                    'Fulfillment: Processed At': processed_at,
+                    'Fulfillment: Tracking Number': '',  # Empty as per template
+                    'Fulfillment: Shipment Status': 'delivered'
+                }
+                
+                matrixify_data.append(matrixify_row)
+            
+            # Create DataFrame for this chunk
+            matrixify_chunk_df = pd.DataFrame(matrixify_data)
+            processed_chunks.append(matrixify_chunk_df)
+            
+            # Update counters
+            total_processed += len(matrixify_chunk_df)
+            total_mapped += len(matrixify_chunk_df)
+            
+            # Log progress
+            elapsed_time = time.time() - start_time
+            if total_processed % 10000 == 0 or total_processed < 10000:
+                rate = total_processed / elapsed_time if elapsed_time > 0 else 0
+                logger.info(f"Progress: {total_processed:,} records processed "
+                           f"({rate:.0f} records/sec)")
+            
+            # Clean up chunk to free memory
+            del chunk_df, matrixify_chunk_df, matrixify_data
+            gc.collect()
+        
+        # Clean up temporary CSV file
+        if temp_csv_path.exists():
+            temp_csv_path.unlink()
+            logger.info("Cleaned up temporary CSV file")
+        
+        # Combine all processed chunks and save to CSV
+        logger.info("Combining processed chunks and saving to CSV...")
+        
+        if len(processed_chunks) == 1:
+            # Single chunk - save directly
+            final_df = processed_chunks[0]
+        else:
+            # Multiple chunks - combine them
+            final_df = pd.concat(processed_chunks, ignore_index=True)
+        
+        # Save to CSV file
+        final_df.to_csv(output_path, index=False)
+        logger.info(f"Successfully saved {len(final_df):,} records to CSV file")
+        
+        # Clean up
+        del processed_chunks, final_df
+        gc.collect()
+        
+        processing_time = time.time() - start_time
+        total_time_with_conversion = processing_time + conversion_time
+        
+        logger.info(f"\n{'='*60}")
+        logger.info(f"Chunked conversion completed successfully!")
+        logger.info(f"Total records processed: {total_processed:,}")
+        logger.info(f"Successfully mapped: {total_mapped:,} ({total_mapped/total_records*100:.1f}%)")
+        logger.info(f"Unmapped records: {total_unmapped:,} ({total_unmapped/total_records*100:.1f}%)")
+        logger.info(f"Processing time (excl. conversion): {processing_time:.2f} seconds")
+        logger.info(f"Total time (incl. conversion): {total_time_with_conversion:.2f} seconds")
+        logger.info(f"Processing rate: {total_processed/processing_time:.0f} records/second")
+        logger.info(f"Output file: {output_path}")
+        logger.info(f"{'='*60}")
+        
+        return output_path, total_processed, total_mapped, total_unmapped
+    
+    except Exception as e:
+        logger.error(f"Error in chunked conversion: {e}")
+        # Clean up temporary file on error
+        temp_csv_path = Path("temp_processed_orders.csv")
+        if temp_csv_path.exists():
+            temp_csv_path.unlink()
+        raise
+
+
+def convert_to_matrixify_format_simple(orders_df):
+    """Convert orders data to Matrixify CSV format for small datasets."""
+    try:
+        logger.info("Converting to Matrixify format (simple processing)...")
         start_time = time.time()
         
         # Filter out rows where Product Code is NaN (unmapped products)
@@ -160,7 +324,7 @@ def convert_to_matrixify_format(orders_df):
                 'Processed At': processed_at,
                 'Customer: Email': str(row['Email']).strip(),
                 'Line: Type': 'Line Item',
-                'Line: SKU': str(int(row['Product Code'])).zfill(12),  # Ensure 12-digit format
+                'Line: SKU': str(row['Product Code']).strip(),  # Keep as string, don't force to int
                 'Line: Quantity': int(row['Product quantity']),
                 'Line: Price': float(row['Price ($)']),
                 'Line: Grams': 0,
@@ -282,27 +446,51 @@ def main():
     logger.info("="*60)
     
     try:
-        # Load processed orders
-        orders_df = load_processed_orders()
+        # Get orders file information
+        orders_path, columns, file_size_mb = get_orders_info()
         
-        # Convert to Matrixify format
-        matrixify_df = convert_to_matrixify_format(orders_df)
-        
-        # Save to CSV
-        output_path = save_matrixify_csv(matrixify_df)
-        
-        # Validate output
-        validate_output(output_path)
-        
-        # Final summary
-        total_time = time.time() - start_time
-        logger.info(f"\n{'='*60}")
-        logger.info(f"Conversion completed successfully!")
-        logger.info(f"Input records: {len(orders_df):,}")
-        logger.info(f"Output records: {len(matrixify_df):,}")
-        logger.info(f"Output file: {output_path}")
-        logger.info(f"Total execution time: {total_time:.2f} seconds")
-        logger.info(f"{'='*60}")
+        # Check file size to determine processing method
+        if file_size_mb < 10:  # Small file - use simple approach
+            logger.info("Small dataset detected - using simple processing method")
+            
+            # Load the processed orders
+            logger.info("Loading processed orders data...")
+            orders_df = pd.read_excel(orders_path, engine='openpyxl')
+            
+            # Convert to Matrixify format
+            matrixify_df = convert_to_matrixify_format_simple(orders_df)
+            
+            # Save to CSV
+            output_path = save_matrixify_csv(matrixify_df)
+            
+            # Validate output
+            validate_output(output_path)
+            
+            # Final summary
+            total_time = time.time() - start_time
+            logger.info(f"\n{'='*60}")
+            logger.info(f"Conversion completed successfully!")
+            logger.info(f"Input records: {len(orders_df):,}")
+            logger.info(f"Output records: {len(matrixify_df):,}")
+            logger.info(f"Output file: {output_path}")
+            logger.info(f"Total execution time: {total_time:.2f} seconds")
+            logger.info(f"{'='*60}")
+            
+        else:  # Large file - use chunked processing
+            logger.info("Large dataset detected - using chunked processing method")
+            
+            # Convert to Matrixify format using chunked processing
+            output_path, total_processed, total_mapped, total_unmapped = convert_to_matrixify_format_chunked(orders_path, columns)
+            
+            # Validate output
+            validate_output(output_path)
+            
+            # Final summary
+            total_time = time.time() - start_time
+            logger.info(f"\n{'='*60}")
+            logger.info(f"Conversion completed successfully!")
+            logger.info(f"Total execution time: {total_time:.2f} seconds")
+            logger.info(f"{'='*60}")
         
     except Exception as e:
         logger.error(f"Conversion failed: {e}")
