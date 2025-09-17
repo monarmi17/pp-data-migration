@@ -1,0 +1,20 @@
+# Dockerfile for Orders-Products Merger
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements file first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the merge script
+COPY merge_orders_products_optimized.py .
+
+# Create necessary directories
+RUN mkdir -p processed datasource
+
+# Default command
+CMD ["python", "merge_orders_products_optimized.py"]

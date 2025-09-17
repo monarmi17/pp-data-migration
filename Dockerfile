@@ -1,3 +1,4 @@
+# Legacy Dockerfile for backward compatibility
 # Use Python 3.11 slim image
 FROM python:3.11-slim
 
@@ -10,14 +11,17 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the optimized Python script for large datasets
+# Copy both scripts for flexibility
 COPY merge_orders_products_optimized.py .
+COPY orders_to_matrixify.py .
 
 # Copy the data directories
 COPY datasource/ ./datasource/
 
-# Create processed directory
-RUN mkdir -p processed
+# Create necessary directories
+RUN mkdir -p processed output
 
-# Run the optimized script
+# Default: Run the merge script (Step 1 only)
+# To run Step 2: docker run <image> python orders_to_matrixify.py
+# To run full pipeline: use docker-compose up full-pipeline
 CMD ["python", "merge_orders_products_optimized.py"]

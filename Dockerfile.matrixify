@@ -1,0 +1,20 @@
+# Dockerfile for Matrixify Converter
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements file first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the Matrixify conversion script
+COPY orders_to_matrixify.py .
+
+# Create necessary directories
+RUN mkdir -p processed output
+
+# Default command
+CMD ["python", "orders_to_matrixify.py"]

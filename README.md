@@ -1,16 +1,27 @@
-# Orders and Products Data Merger
+# PetPlanet Order Data Migration Pipeline
 
-This project merges orders and products data to add Product Code information to the orders dataset.
+This project provides a complete data migration pipeline for PetPlanet orders, consisting of two main steps:
+
+1. **Orders-Products Merger**: Merges orders and products data to add Product Code information
+2. **Matrixify Converter**: Converts processed orders to Matrixify CSV format for Shopify import
 
 ## Overview
 
-The script performs the following operations:
+### Step 1: Orders and Products Data Merger
 
 1. Loads orders data from `datasource/orders.xlsx`
 2. Loads products data from `datasource/products.xlsx`
 3. Merges the data using SKU as the foreign key
 4. Adds a "Product Code" column to the orders data
 5. Saves the merged data to `processed/orders.xlsx`
+
+### Step 2: Matrixify CSV Conversion
+
+1. Loads processed orders from `processed/orders.xlsx`
+2. Converts data to Matrixify CSV format with proper column mapping
+3. Generates logical timestamps based on order dates
+4. Groups data by Product Code (SKU)
+5. Saves the Matrixify-compatible CSV to `output/matrixify_orders.csv`
 
 ## Data Structure
 
@@ -29,34 +40,40 @@ The script performs the following operations:
 
 ## Usage
 
-### Option 1: Run with Docker (Recommended)
+### Option 1: Docker Compose (Recommended - Full Pipeline)
 
-1. Build the Docker image:
+Run the complete pipeline (both steps) with Docker Compose:
+
+```bash
+# Run the full pipeline
+docker-compose up full-pipeline
+
+# Or run individual steps
+docker-compose up merge-orders    # Step 1 only
+docker-compose up matrixify-convert  # Step 2 only (requires Step 1 first)
+```
+
+### Option 2: Individual Docker Containers
+
+Run each step separately:
+
+```bash
+# Step 1: Merge orders with products
+docker build -f Dockerfile.merge -t orders-merger .
+docker run --rm -v $(pwd)/datasource:/app/datasource -v $(pwd)/processed:/app/processed orders-merger
+
+# Step 2: Convert to Matrixify format
+docker build -f Dockerfile.matrixify -t matrixify-converter .
+docker run --rm -v $(pwd)/processed:/app/processed -v $(pwd)/output:/app/output matrixify-converter
+```
+
+### Option 3: Legacy Docker (Step 1 Only)
+
+For backward compatibility:
 
 ```bash
 docker build -t orders-merger .
-```
-
-2. Run the container:
-
-```bash
 docker run --rm -v $(pwd)/processed:/app/processed orders-merger
-```
-
-**Note**: The Docker image uses the optimized script for handling large datasets (500k+ orders).
-
-### Option 2: Run Locally
-
-1. Install dependencies:
-
-```bash
-python3 -m pip install --break-system-packages pandas openpyxl xlsxwriter
-```
-
-2. Run the optimized script:
-
-```bash
-python3 merge_orders_products_optimized.py
 ```
 
 ## Troubleshooting
@@ -68,13 +85,6 @@ If you encounter Docker permission errors like "permission denied" or "failed to
 - Restart Docker Desktop
 - Check Docker Desktop is running and has sufficient resources allocated
 
-### Python Environment Issues
-
-If running locally and you get "externally-managed-environment" errors:
-
-- Use the `--break-system-packages` flag as shown in Option 2
-- Consider using Docker instead for a cleaner environment
-
 ### Large Dataset Performance
 
 For datasets with 500k+ orders:
@@ -85,11 +95,39 @@ For datasets with 500k+ orders:
 
 ## Output
 
-The script will create `processed/orders.xlsx` with the following enhancements:
+### Step 1 Output: `processed/orders.xlsx`
+
+The merge script creates `processed/orders.xlsx` with the following enhancements:
 
 - All original columns from the orders data
 - New "Product Code" column positioned right after the "Product" column
 - Product Code values mapped from the products data using SKU as the foreign key
+
+### Step 2 Output: `output/matrixify_orders.csv`
+
+The Matrixify converter creates a CSV file with the following structure:
+
+| Column                       | Source               | Description                        |
+| ---------------------------- | -------------------- | ---------------------------------- |
+| Name                         | Ticket Number        | Order identifier                   |
+| Command                      | Static: "NEW"        | Matrixify command                  |
+| Processed At                 | Generated from Date  | Logical timestamp (business hours) |
+| Customer: Email              | Email                | Customer email address             |
+| Line: Type                   | Static: "Line Item"  | Item type                          |
+| Line: SKU                    | Product Code         | 12-digit Product Code              |
+| Line: Quantity               | Product quantity     | Item quantity                      |
+| Line: Price                  | Price ($)            | Item price                         |
+| Line: Grams                  | Static: 0            | Weight (not used)                  |
+| Line: Requires Shipping      | Static: TRUE         | Shipping requirement               |
+| Line: Vendor                 | Empty                | Vendor information                 |
+| Transaction: Kind            | Static: "sale"       | Transaction type                   |
+| Transaction: Processed At    | Same as Processed At | Transaction timestamp              |
+| Transaction: Amount          | Price ($)            | Transaction amount                 |
+| Payment: Status              | Static: "paid"       | Payment status                     |
+| Fulfillment: Status          | Static: "success"    | Fulfillment status                 |
+| Fulfillment: Processed At    | Same as Processed At | Fulfillment timestamp              |
+| Fulfillment: Tracking Number | Empty                | Tracking information               |
+| Fulfillment: Shipment Status | Static: "delivered"  | Shipment status                    |
 
 ## Error Handling
 
@@ -136,15 +174,49 @@ The optimized version (`merge_orders_products_optimized.py`) includes several en
 order-data-migration/
 ├── datasource/
 │   ├── orders.xlsx
-│   └── products.xlsx
+│   ├── orders-original.xlsx
+│   ├── products.xlsx
+│   ├── test-orders.xlsx
+│   └── test-products.xlsx
 ├── processed/
-│   └── orders.xlsx (generated)
+│   ├── orders.xlsx (generated by Step 1)
+│   └── orders.bak.xlsx
+├── output/
+│   └── matrixify_orders.csv (generated by Step 2)
 ├── specs/
 │   ├── orders-technical-specs.md
 │   └── product-technical-specs.md
-├── merge_orders_products_optimized.py
+├── templates/
+│   └── matrixify-orders.csv
+├── merge_orders_products_optimized.py (Step 1 script)
+├── orders_to_matrixify.py (Step 2 script)
 ├── requirements.txt
-├── Dockerfile
-├── data_merger.log (generated by optimized version)
+├── Dockerfile (Legacy - Step 1 only)
+├── Dockerfile.merge (Step 1 container)
+├── Dockerfile.matrixify (Step 2 container)
+├── Dockerfile.pipeline (Full pipeline container)
+├── docker-compose.yml (Orchestration)
 └── README.md
+```
+
+## Docker Services
+
+The project includes three Docker services via `docker-compose.yml`:
+
+- **merge-orders**: Runs Step 1 (orders-products merger)
+- **matrixify-convert**: Runs Step 2 (Matrixify CSV conversion)
+- **full-pipeline**: Runs both steps sequentially
+
+## Logs
+
+Both scripts generate detailed logs when running in Docker containers. The logs are visible in the Docker container output and can be accessed using:
+
+```bash
+# View logs for individual services
+docker-compose logs merge-orders
+docker-compose logs matrixify-convert
+docker-compose logs full-pipeline
+
+# Follow logs in real-time
+docker-compose logs -f full-pipeline
 ```

@@ -1,0 +1,43 @@
+services:
+  # Service for merging orders with products (Step 1)
+  merge-orders:
+    build:
+      context: .
+      dockerfile: Dockerfile.merge
+    volumes:
+      - ./datasource:/app/datasource
+      - ./processed:/app/processed
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python merge_orders_products_optimized.py
+
+  # Service for converting to Matrixify format (Step 2)
+  matrixify-convert:
+    build:
+      context: .
+      dockerfile: Dockerfile.matrixify
+    volumes:
+      - ./processed:/app/processed
+      - ./output:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python orders_to_matrixify.py
+    depends_on:
+      - merge-orders
+
+  # Combined service that runs both steps sequentially
+  full-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    volumes:
+      - ./datasource:/app/datasource
+      - ./processed:/app/processed
+      - ./output:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: sh -c "python merge_orders_products_optimized.py && python orders_to_matrixify.py"
+
+volumes:
+  processed_data:
+  output_data:
