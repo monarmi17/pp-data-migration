@@ -67,6 +67,9 @@ def load_products_data():
         if 'Product Code' not in products_df.columns:
             raise ValueError("'Product Code' column not found in products data")
         
+        # Normalize SKU format - ensure all SKUs are strings
+        products_df['SKU'] = products_df['SKU'].astype(str)
+        
         # Remove any duplicate SKUs and keep first occurrence
         initial_count = len(products_df)
         products_df = products_df.drop_duplicates(subset=['SKU'], keep='first')
@@ -116,8 +119,15 @@ def get_orders_info():
 def process_orders_chunk(chunk_df, sku_mapping, chunk_num, total_chunks):
     """Process a single chunk of orders data."""
     try:
+        # Normalize Product column format to match SKU format
+        # Handle NaN/inf values and convert to integer first (to remove decimal), then to string and pad with leading zeros to 12 digits
+        chunk_df['Product_normalized'] = pd.to_numeric(chunk_df['Product'], errors='coerce').fillna(0).astype('int64').astype(str).str.zfill(12)
+        
         # Add Product Code column using vectorized mapping
-        chunk_df['Product Code'] = chunk_df['Product'].map(sku_mapping)
+        chunk_df['Product Code'] = chunk_df['Product_normalized'].map(sku_mapping)
+        
+        # Drop the temporary normalized column
+        chunk_df = chunk_df.drop(columns=['Product_normalized'])
         
         # Count successful mappings in this chunk
         mapped_count = chunk_df['Product Code'].notna().sum()
@@ -164,8 +174,15 @@ def merge_data_simple(orders_path, columns, sku_mapping):
         # Load entire orders file
         orders_df = pd.read_excel(orders_path, engine='openpyxl')
         
+        # Normalize Product column format to match SKU format
+        # Handle NaN/inf values and convert to integer first (to remove decimal), then to string and pad with leading zeros to 12 digits
+        orders_df['Product_normalized'] = pd.to_numeric(orders_df['Product'], errors='coerce').fillna(0).astype('int64').astype(str).str.zfill(12)
+        
         # Add Product Code column using vectorized mapping
-        orders_df['Product Code'] = orders_df['Product'].map(sku_mapping)
+        orders_df['Product Code'] = orders_df['Product_normalized'].map(sku_mapping)
+        
+        # Drop the temporary normalized column
+        orders_df = orders_df.drop(columns=['Product_normalized'])
         
         # Count mappings
         total_mapped = orders_df['Product Code'].notna().sum()
