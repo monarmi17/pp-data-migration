@@ -10,8 +10,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the Python script
-COPY merge_orders_products.py .
+# Copy the optimized Python script for large datasets
+COPY merge_orders_products_optimized.py .
 
 # Copy the data directories
 COPY datasource/ ./datasource/
@@ -19,5 +19,5 @@ COPY datasource/ ./datasource/
 # Create processed directory
 RUN mkdir -p processed
 
-# Run the script
-CMD ["python", "merge_orders_products.py"]
+# Run the optimized script
+CMD ["python", "merge_orders_products_optimized.py"]
