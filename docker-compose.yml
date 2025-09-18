@@ -122,6 +122,19 @@ services:
         fi
       "
 
+  # Error Analysis Service - Analyzes failed imports from import-results
+  error-analysis:
+    build:
+      context: .
+      dockerfile: Dockerfile.error-analysis
+    volumes:
+      - ./import-results:/app/import-results
+      - ./error-analysis:/app/error-analysis
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python analyze_import_errors.py
+
 volumes:
   order_line_items:
   matrixify_orders:

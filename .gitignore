@@ -11,9 +11,13 @@ output/matrixify_orders.csv
 # New directory structure - output directories
 order-line-items-with-product-codes/
 matrixify-ready-orders/
+import-results/
 
 # Error/ignored rows directory
 error-rows/
+
+# Error analysis directory
+error-analysis/
 
 # Log files and directory
 logs/

@@ -243,6 +243,34 @@ ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
 # REGION_NAME=auburn_bay  # This will be ignored if ORDERS_FILE is set
 ```
 
+#### Error Analysis Usage
+
+**Basic Usage:**
+
+```bash
+# Analyze import errors from import-results directory
+docker compose run --rm error-analysis
+
+# Alternative: Direct script execution
+python analyze_import_errors.py
+```
+
+**Custom Options:**
+
+```bash
+# Custom output directory
+docker compose run --rm error-analysis python analyze_import_errors.py --output-dir custom-analysis
+
+# Custom import results directory
+docker compose run --rm error-analysis python analyze_import_errors.py --import-results-dir /path/to/results
+```
+
+**Output Files Created:**
+
+- `error-analysis/orders_error_summary.csv` - Detailed orders error analysis
+- `error-analysis/products_error_summary.csv` - Detailed products error analysis
+- `error-analysis/error_type_summary.csv` - High-level error type overview
+
 ## File Naming Conventions
 
 ### Input Files (Production)
@@ -271,6 +299,8 @@ ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
 8. **Data Quality:** Header row skipping ensures correct data processing
 9. **Error Management:** Comprehensive error tracking for manual review
 10. **Debugging Support:** Detailed error files with reasons and chunk numbers
+11. **Import Analysis:** Post-import error analysis with pattern recognition
+12. **Troubleshooting Efficiency:** Grouped error types for faster issue resolution
 
 ## Testing Completed
 
@@ -289,6 +319,7 @@ ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
 - ✅ `merge-orders-test` / `merge-orders-prod` services working
 - ✅ `matrixify-convert-test` / `matrixify-convert-prod` services working
 - ✅ `full-pipeline-test` / `full-pipeline-prod` services working
+- ✅ `error-analysis` service working
 - ✅ Environment variable handling (ORDERS_FILE, REGION_NAME)
 - ✅ Bind mounts working (scripts, logs, output directories)
 
@@ -298,6 +329,9 @@ ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
 - ✅ Error tracking system tested (no error files created = successful processing)
 - ✅ Auto-detection working when no arguments provided
 - ✅ Region extraction from filenames working correctly
+- ✅ Import error analysis with pattern recognition
+- ✅ Error grouping and categorization system
+- ✅ Clean output files without timestamps
 
 ### Performance Verification ✅
 
@@ -316,5 +350,55 @@ The pipeline is now ready to handle multiple regional order files with:
 - ✅ **Robust logging and debugging** capabilities
 - ✅ **Test mode validation** before processing production data
 - ✅ **Scalable architecture** for 40+ regional files
+- ✅ **Import error analysis** for post-processing troubleshooting
+- ✅ **Pattern-based error grouping** for efficient issue resolution
+
+### 8. Import Error Analysis Service ✅
+
+**New Feature Added:** Comprehensive error analysis for failed Shopify imports
+
+#### analyze_import_errors.py
+
+- **Purpose:** Analyzes failed imports from `import-results/` CSV files
+- **Error Pattern Detection:** Identifies and groups common error types
+- **Key Identifiers:** Extracts significant columns for backtracking issues
+- **Output Files:** Creates clean CSV summaries without timestamps:
+  - `orders_error_summary.csv`
+  - `products_error_summary.csv`
+  - `error_type_summary.csv`
+
+**Error Types Detected:**
+
+- **Orders Errors:**
+
+  - `duplicate_sku_variants`: Multiple variants with same SKU
+  - `missing_line_item_fields`: Missing Name/Title fields
+  - `invalid_line_items`: Invalid line item structure
+
+- **Products Errors:**
+
+  - `inconsistent_title`: Different titles across variants
+  - `inconsistent_body_html`: Different descriptions across variants
+  - `missing_required_fields`: Blank required fields
+
+- **Generic Errors:**
+  - `validation_error`: General validation issues
+  - `duplicate_identifier`: Duplicate identifiers
+
+#### Docker Integration
+
+**New Service:** `error-analysis`
+
+- **Dockerfile:** `Dockerfile.error-analysis`
+- **Input:** Bind-mounted `import-results/` directory
+- **Output:** Bind-mounted `error-analysis/` directory
+- **Usage:** `docker compose run --rm error-analysis`
+
+**Features:**
+
+- **Automatic Detection:** Finds all CSV files in import-results
+- **Pattern Matching:** Uses regex patterns to categorize errors
+- **Key Identifiers Only:** Includes only columns needed for troubleshooting
+- **Git Ignored:** `error-analysis/` directory added to `.gitignore`
 
 **Current Status:** All services tested and verified working with `.env` file containing only `ORDERS_FILE=Sales_By_Customer_Beddington.xlsx`
