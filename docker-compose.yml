@@ -1,41 +1,123 @@
 services:
-  # Service for merging orders with products (Step 1)
-  merge-orders:
+  # Test mode - Service for merging orders with products (Step 1)
+  merge-orders-test:
     build:
       context: .
       dockerfile: Dockerfile.merge
     volumes:
       - ./datasource:/app/datasource
-      - ./processed:/app/processed
+      - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
+      - ./logs:/app/logs
+      - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
-    command: python merge_orders_products_optimized.py
+    command: python merge_orders_products_optimized.py --test
 
-  # Service for converting to Matrixify format (Step 2)
-  matrixify-convert:
+  # Production mode - Service for merging orders with products (Step 1)
+  merge-orders-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.merge
+    volumes:
+      - ./datasource:/app/datasource
+      - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
+      - ./logs:/app/logs
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ORDERS_FILE=${ORDERS_FILE}
+      - REGION_NAME=${REGION_NAME}
+    command: >
+      sh -c "
+        if [ -n \"$$ORDERS_FILE\" ]; then
+          python merge_orders_products_optimized.py --orders-file $$ORDERS_FILE
+        elif [ -n \"$$REGION_NAME\" ]; then
+          python merge_orders_products_optimized.py --region $$REGION_NAME
+        else
+          echo 'Error: Either ORDERS_FILE or REGION_NAME environment variable must be set for production mode'
+          exit 1
+        fi
+      "
+
+  # Test mode - Service for converting to Matrixify format (Step 2)
+  matrixify-convert-test:
     build:
       context: .
       dockerfile: Dockerfile.matrixify
     volumes:
-      - ./processed:/app/processed
-      - ./output:/app/output
+      - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
+      - ./matrixify-ready-orders:/app/matrixify-ready-orders
+      - ./logs:/app/logs
+      - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
-    command: python orders_to_matrixify.py
+    command: python orders_to_matrixify.py --test
 
-  # Combined service that runs both steps sequentially
-  full-pipeline:
+  # Production mode - Service for converting to Matrixify format (Step 2)
+  matrixify-convert-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.matrixify
+    volumes:
+      - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
+      - ./matrixify-ready-orders:/app/matrixify-ready-orders
+      - ./logs:/app/logs
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REGION_NAME=${REGION_NAME}
+    command: >
+      sh -c "
+        if [ -n \"$$REGION_NAME\" ]; then
+          python orders_to_matrixify.py --region $$REGION_NAME
+        else
+          python orders_to_matrixify.py
+        fi
+      "
+
+  # Test mode - Combined service that runs both steps sequentially
+  full-pipeline-test:
     build:
       context: .
       dockerfile: Dockerfile.pipeline
     volumes:
       - ./datasource:/app/datasource
-      - ./processed:/app/processed
-      - ./output:/app/output
+      - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
+      - ./matrixify-ready-orders:/app/matrixify-ready-orders
+      - ./logs:/app/logs
+      - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
-    command: sh -c "python merge_orders_products_optimized.py && python orders_to_matrixify.py"
+    command: sh -c "python merge_orders_products_optimized.py --test && python orders_to_matrixify.py --test"
+
+  # Production mode - Combined service that runs both steps sequentially
+  full-pipeline-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    volumes:
+      - ./datasource:/app/datasource
+      - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
+      - ./matrixify-ready-orders:/app/matrixify-ready-orders
+      - ./logs:/app/logs
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ORDERS_FILE=${ORDERS_FILE}
+      - REGION_NAME=${REGION_NAME}
+    command: >
+      sh -c "
+        if [ -n \"$$ORDERS_FILE\" ]; then
+          python merge_orders_products_optimized.py --orders-file $$ORDERS_FILE && python orders_to_matrixify.py --region $$(echo $$ORDERS_FILE | sed -E 's/Sales_By_Customer_([^.]+).*/\1/' | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g')
+        elif [ -n \"$$REGION_NAME\" ]; then
+          python merge_orders_products_optimized.py --region $$REGION_NAME && python orders_to_matrixify.py --region $$REGION_NAME
+        else
+          echo 'Error: Either ORDERS_FILE or REGION_NAME environment variable must be set for production mode'
+          exit 1
+        fi
+      "
 
 volumes:
-  processed_data:
-  output_data:
+  order_line_items:
+  matrixify_orders:
+  logs_data:

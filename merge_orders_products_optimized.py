@@ -5,11 +5,16 @@ Orders and Products Data Merger - Optimized for Large Datasets
 This script merges the orders.xlsx and products.xlsx files to add Product Code
 information to the orders data. Optimized for handling large datasets (500k+ orders).
 
+Supports test mode and production mode:
+- Test mode: Uses test-data/orders.xlsx and test-data/products.xlsx
+- Production mode: Uses original-data/<region>_orders.xlsx and original-data/products.xlsx
+
 Key optimizations:
 - Memory-efficient chunked processing
 - Progress tracking and logging
 - Optimized data types
 - Efficient file I/O operations
+- Region-specific file naming
 
 Author: AI Assistant
 Date: 2024
@@ -20,20 +25,14 @@ import os
 import sys
 import time
 import gc
+import re
 from pathlib import Path
 from datetime import datetime
 import logging
+import argparse
 
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('data_merger.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+# Configure logging (will be updated in main() based on mode)
 logger = logging.getLogger(__name__)
 
 # Configuration for large dataset processing
@@ -41,14 +40,46 @@ CHUNK_SIZE = 50000  # Process orders in chunks of 50k rows
 PROGRESS_INTERVAL = 10000  # Show progress every 10k rows
 
 
-def load_products_data():
+def extract_region_from_filename(filename):
+    """Extract region name from filename like Sales_By_Customer_Auburn_Bay.xlsx"""
+    try:
+        # Remove file extension
+        name_without_ext = filename.replace('.xlsx', '').replace('.csv', '')
+        
+        # Pattern to match Sales_By_Customer_<region> format
+        pattern = r'Sales_By_Customer_(.+)'
+        match = re.search(pattern, name_without_ext, re.IGNORECASE)
+        
+        if match:
+            region = match.group(1)
+            # Convert to snake_case and lowercase
+            region = region.replace(' ', '_').replace('-', '_').lower()
+            return region
+        
+        # If no pattern match, try to extract last part after underscores
+        parts = name_without_ext.split('_')
+        if len(parts) > 1:
+            return '_'.join(parts[-2:]).lower()  # Take last two parts
+        
+        return name_without_ext.lower()
+    
+    except Exception as e:
+        logger.warning(f"Could not extract region from filename '{filename}': {e}")
+        return "unknown_region"
+
+
+def load_products_data(test_mode=False):
     """Load and optimize products data for efficient lookups."""
     try:
-        products_path = Path("datasource/products.xlsx")
+        if test_mode:
+            products_path = Path("datasource/test-data/products.xlsx")
+        else:
+            products_path = Path("datasource/original-data/products.xlsx")
+            
         if not products_path.exists():
             raise FileNotFoundError(f"Products file not found: {products_path}")
         
-        logger.info("Loading products data...")
+        logger.info(f"Loading products data from {products_path}...")
         start_time = time.time()
         
         # Load only required columns to save memory
@@ -92,10 +123,17 @@ def load_products_data():
         sys.exit(1)
 
 
-def get_orders_info():
+def get_orders_info(test_mode=False, orders_file=None):
     """Get basic information about orders file without loading all data."""
     try:
-        orders_path = Path("datasource/orders.xlsx")
+        if test_mode:
+            orders_path = Path("datasource/test-data/orders.xlsx")
+        elif orders_file:
+            orders_path = Path(f"datasource/original-data/{orders_file}")
+        else:
+            # Default fallback
+            orders_path = Path("datasource/original-data/orders.xlsx")
+            
         if not orders_path.exists():
             raise FileNotFoundError(f"Orders file not found: {orders_path}")
         
@@ -103,7 +141,7 @@ def get_orders_info():
         sample_df = pd.read_excel(orders_path, nrows=100, engine='openpyxl')
         
         # Get total row count efficiently
-        logger.info("Analyzing orders file structure...")
+        logger.info(f"Analyzing orders file structure: {orders_path}...")
         
         # Check for required columns
         if 'Product' not in sample_df.columns:
@@ -163,7 +201,7 @@ def reorder_columns(df):
     return df
 
 
-def merge_data_simple(orders_path, columns, sku_mapping):
+def merge_data_simple(orders_path, columns, sku_mapping, region_name="test"):
     """
     Simple merge for small datasets - loads entire file into memory.
     """
@@ -200,9 +238,12 @@ def merge_data_simple(orders_path, columns, sku_mapping):
         orders_df = reorder_columns(orders_df)
         
         # Create processed directory and save
-        processed_dir = Path("processed")
+        processed_dir = Path("order-line-items-with-product-codes")
         processed_dir.mkdir(exist_ok=True)
-        output_path = processed_dir / "orders.xlsx"
+        
+        # Create region-specific output filename
+        output_filename = f"{region_name}_order_line_items_with_product_codes.xlsx"
+        output_path = processed_dir / output_filename
         
         # Save to Excel file
         orders_df.to_excel(output_path, index=False, engine='openpyxl')
@@ -225,7 +266,7 @@ def merge_data_simple(orders_path, columns, sku_mapping):
         sys.exit(1)
 
 
-def merge_data_chunked(orders_path, columns, sku_mapping):
+def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test"):
     """
     Merge orders and products data using chunked processing for memory efficiency.
     Since pd.read_excel doesn't support chunksize, we'll convert to CSV first and then process in chunks.
@@ -260,9 +301,12 @@ def merge_data_chunked(orders_path, columns, sku_mapping):
         chunk_num = 0
         
         # Create processed directory
-        processed_dir = Path("processed")
+        processed_dir = Path("order-line-items-with-product-codes")
         processed_dir.mkdir(exist_ok=True)
-        output_path = processed_dir / "orders.xlsx"
+        
+        # Create region-specific output filename
+        output_filename = f"{region_name}_order_line_items_with_product_codes.xlsx"
+        output_path = processed_dir / output_filename
         
         # Initialize list to store processed chunks
         processed_chunks = []
@@ -397,19 +441,66 @@ def validate_output(output_path, expected_records):
         logger.warning(f"Could not validate output file: {e}")
 
 
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description='Merge orders and products data with region-specific naming')
+    parser.add_argument('--test', action='store_true', help='Run in test mode using test data')
+    parser.add_argument('--orders-file', type=str, help='Specific orders file to process (for production mode)')
+    parser.add_argument('--region', type=str, help='Region name to use for output files (overrides auto-detection)')
+    return parser.parse_args()
+
+
+def setup_logging(test_mode=False, region_name="test"):
+    """Setup logging configuration based on mode."""
+    log_filename = f"logs/data_merger_{region_name}.log" if not test_mode else "logs/data_merger_test.log"
+    
+    # Ensure logs directory exists
+    Path("logs").mkdir(exist_ok=True)
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_filename),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+
 def main():
     """Main function to orchestrate the data merging process."""
     start_time = time.time()
     
+    # Parse arguments
+    args = parse_arguments()
+    
+    # Determine region name
+    region_name = "test"
+    if not args.test:
+        if args.region:
+            region_name = args.region
+        elif args.orders_file:
+            region_name = extract_region_from_filename(args.orders_file)
+        else:
+            logger.error("For production mode, either --orders-file or --region must be specified")
+            sys.exit(1)
+    
+    # Setup logging
+    setup_logging(args.test, region_name)
+    
     logger.info("="*60)
     logger.info("Starting Orders and Products Data Merger (Optimized)")
+    if args.test:
+        logger.info("Running in TEST MODE")
+    else:
+        logger.info(f"Running in PRODUCTION MODE - Region: {region_name}")
     logger.info("="*60)
     
     # Load products data and create mapping
-    sku_mapping = load_products_data()
+    sku_mapping = load_products_data(args.test)
     
     # Get orders file information
-    orders_path, columns = get_orders_info()
+    orders_path, columns = get_orders_info(args.test, args.orders_file)
     
     # Check file size to determine processing method
     file_size_mb = orders_path.stat().st_size / (1024 * 1024)
@@ -418,18 +509,21 @@ def main():
     if file_size_mb < 10:  # Small file - use simple approach
         logger.info("Small dataset detected - using simple processing method")
         total_processed, total_mapped, total_unmapped = merge_data_simple(
-            orders_path, columns, sku_mapping
+            orders_path, columns, sku_mapping, region_name
         )
     else:  # Large file - use chunked processing
         logger.info("Large dataset detected - using chunked processing method")
         total_processed, total_mapped, total_unmapped = merge_data_chunked(
-            orders_path, columns, sku_mapping
+            orders_path, columns, sku_mapping, region_name
         )
     
     # Validate output
-    output_path = Path("processed/orders.xlsx")
+    output_filename = f"{region_name}_order_line_items_with_product_codes.xlsx"
+    output_path = Path("order-line-items-with-product-codes") / output_filename
     if not output_path.exists():
-        output_path = Path("processed/orders.csv")
+        # Try CSV fallback
+        csv_filename = f"{region_name}_order_line_items_with_product_codes.csv"
+        output_path = Path("order-line-items-with-product-codes") / csv_filename
     
     validate_output(output_path, total_processed)
     

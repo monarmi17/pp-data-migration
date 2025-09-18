@@ -1,0 +1,112 @@
+2025-09-18 12:55:57,483 - INFO - ============================================================
+2025-09-18 12:55:57,483 - INFO - Starting Orders to Matrixify CSV Conversion
+2025-09-18 12:55:57,483 - INFO - Running in TEST MODE
+2025-09-18 12:55:57,483 - INFO - Processing file: order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx
+2025-09-18 12:55:57,483 - INFO - ============================================================
+2025-09-18 12:55:57,534 - INFO - Analyzing processed orders file structure: order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx...
+2025-09-18 12:55:57,534 - INFO - Available columns: ['Full name', 'Address', 'Email', 'Lead source', 'Ticket number', 'Location', 'Date', 'Product name', 'Product', 'Product Code', 'Product quantity', 'Price ($)', 'Subtotal ($)', 'Discount ($)', 'Tax ($)', 'Net sales ($)']
+2025-09-18 12:55:57,534 - INFO - Processed orders file size: 0.1 MB
+2025-09-18 12:55:57,534 - INFO - Small dataset detected - using simple processing method
+2025-09-18 12:55:57,534 - INFO - Loading processed orders data...
+2025-09-18 12:55:57,600 - INFO - Converting to Matrixify format (simple processing)...
+2025-09-18 12:55:57,601 - WARNING - Filtered out 1000 rows with missing Product Code
+2025-09-18 12:55:57,601 - INFO - Processing orders for Matrixify format...
+2025-09-18 12:55:57,601 - INFO - Conversion completed: 0 records in 0.00 seconds
+2025-09-18 12:55:57,601 - INFO - Saving Matrixify CSV to matrixify-ready-orders/test_matrixify_orders.csv...
+2025-09-18 12:55:57,603 - INFO - Successfully saved 0 records to matrixify-ready-orders/test_matrixify_orders.csv
+2025-09-18 12:55:57,604 - INFO - File size: 0.00 MB
+2025-09-18 12:55:57,604 - INFO - Save time: 0.00 seconds
+2025-09-18 12:55:57,604 - INFO - Validating output file...
+2025-09-18 12:55:57,605 - WARNING - Could not validate output file: No columns to parse from file
+2025-09-18 12:55:57,605 - INFO - 
+============================================================
+2025-09-18 12:55:57,605 - INFO - Conversion completed successfully!
+2025-09-18 12:55:57,605 - INFO - Input records: 1,000
+2025-09-18 12:55:57,605 - INFO - Output records: 0
+2025-09-18 12:55:57,605 - INFO - Output file: matrixify-ready-orders/test_matrixify_orders.csv
+2025-09-18 12:55:57,605 - INFO - Total execution time: 0.12 seconds
+2025-09-18 12:55:57,605 - INFO - ============================================================
+2025-09-18 07:03:43,883 - INFO - ============================================================
+2025-09-18 07:03:43,883 - INFO - Starting Orders to Matrixify CSV Conversion
+2025-09-18 07:03:43,884 - INFO - Running in TEST MODE
+2025-09-18 07:03:43,884 - INFO - Processing file: order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx
+2025-09-18 07:03:43,884 - INFO - ============================================================
+2025-09-18 07:03:43,921 - INFO - Analyzing processed orders file structure: order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx...
+2025-09-18 07:03:43,921 - INFO - Available columns: ['Full name', 'Address', 'Email', 'Lead source', 'Ticket number', 'Location', 'Date', 'Product name', 'Product', 'Product Code', 'Product quantity', 'Price ($)', 'Subtotal ($)', 'Discount ($)', 'Tax ($)', 'Net sales ($)']
+2025-09-18 07:03:43,921 - INFO - Processed orders file size: 0.0 MB
+2025-09-18 07:03:43,922 - INFO - Small dataset detected - using simple processing method
+2025-09-18 07:03:43,922 - INFO - Loading processed orders data...
+2025-09-18 07:03:43,928 - INFO - Converting to Matrixify format (simple processing)...
+2025-09-18 07:03:43,928 - WARNING - Filtered out 21 rows with missing Product Code
+2025-09-18 07:03:43,929 - INFO - Processing orders for Matrixify format...
+2025-09-18 07:03:43,929 - INFO - Conversion completed: 0 records in 0.00 seconds
+2025-09-18 07:03:43,929 - INFO - Saving Matrixify CSV to matrixify-ready-orders/test_matrixify_orders.csv...
+2025-09-18 07:03:43,931 - INFO - Successfully saved 0 records to matrixify-ready-orders/test_matrixify_orders.csv
+2025-09-18 07:03:43,931 - INFO - File size: 0.00 MB
+2025-09-18 07:03:43,931 - INFO - Save time: 0.00 seconds
+2025-09-18 07:03:43,931 - INFO - Validating output file...
+2025-09-18 07:03:43,931 - WARNING - Could not validate output file: No columns to parse from file
+2025-09-18 07:03:43,931 - INFO - 
+============================================================
+2025-09-18 07:03:43,932 - INFO - Conversion completed successfully!
+2025-09-18 07:03:43,932 - INFO - Input records: 21
+2025-09-18 07:03:43,932 - INFO - Output records: 0
+2025-09-18 07:03:43,932 - INFO - Output file: matrixify-ready-orders/test_matrixify_orders.csv
+2025-09-18 07:03:43,932 - INFO - Total execution time: 0.05 seconds
+2025-09-18 07:03:43,932 - INFO - ============================================================
+2025-09-18 07:04:16,268 - INFO - ============================================================
+2025-09-18 07:04:16,268 - INFO - Starting Orders to Matrixify CSV Conversion
+2025-09-18 07:04:16,268 - INFO - Running in TEST MODE
+2025-09-18 07:04:16,268 - INFO - Processing file: order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx
+2025-09-18 07:04:16,269 - INFO - ============================================================
+2025-09-18 07:04:16,305 - INFO - Analyzing processed orders file structure: order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx...
+2025-09-18 07:04:16,305 - INFO - Available columns: ['Full name', 'Address', 'Email', 'Lead source', 'Ticket number', 'Location', 'Date', 'Product name', 'Product', 'Product Code', 'Product quantity', 'Price ($)', 'Subtotal ($)', 'Discount ($)', 'Tax ($)', 'Net sales ($)']
+2025-09-18 07:04:16,306 - INFO - Processed orders file size: 0.0 MB
+2025-09-18 07:04:16,306 - INFO - Small dataset detected - using simple processing method
+2025-09-18 07:04:16,306 - INFO - Loading processed orders data...
+2025-09-18 07:04:16,312 - INFO - Converting to Matrixify format (simple processing)...
+2025-09-18 07:04:16,313 - WARNING - Filtered out 21 rows with missing Product Code
+2025-09-18 07:04:16,313 - INFO - Processing orders for Matrixify format...
+2025-09-18 07:04:16,314 - INFO - Conversion completed: 0 records in 0.00 seconds
+2025-09-18 07:04:16,314 - INFO - Saving Matrixify CSV to matrixify-ready-orders/test_matrixify_orders.csv...
+2025-09-18 07:04:16,315 - INFO - Successfully saved 0 records to matrixify-ready-orders/test_matrixify_orders.csv
+2025-09-18 07:04:16,315 - INFO - File size: 0.00 MB
+2025-09-18 07:04:16,315 - INFO - Save time: 0.00 seconds
+2025-09-18 07:04:16,316 - INFO - Validating output file...
+2025-09-18 07:04:16,316 - WARNING - Could not validate output file: No columns to parse from file
+2025-09-18 07:04:16,316 - INFO - 
+============================================================
+2025-09-18 07:04:16,316 - INFO - Conversion completed successfully!
+2025-09-18 07:04:16,317 - INFO - Input records: 21
+2025-09-18 07:04:16,317 - INFO - Output records: 0
+2025-09-18 07:04:16,317 - INFO - Output file: matrixify-ready-orders/test_matrixify_orders.csv
+2025-09-18 07:04:16,317 - INFO - Total execution time: 0.05 seconds
+2025-09-18 07:04:16,317 - INFO - ============================================================
+2025-09-18 07:05:53,123 - INFO - ============================================================
+2025-09-18 07:05:53,123 - INFO - Starting Orders to Matrixify CSV Conversion
+2025-09-18 07:05:53,123 - INFO - Running in TEST MODE
+2025-09-18 07:05:53,123 - INFO - Processing file: order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx
+2025-09-18 07:05:53,123 - INFO - ============================================================
+2025-09-18 07:05:53,161 - INFO - Analyzing processed orders file structure: order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx...
+2025-09-18 07:05:53,161 - INFO - Available columns: ['Full name', 'Address', 'Email', 'Lead source', 'Ticket number', 'Location', 'Date', 'Product name', 'Product', 'Product Code', 'Product quantity', 'Price ($)', 'Subtotal ($)', 'Discount ($)', 'Tax ($)', 'Net sales ($)']
+2025-09-18 07:05:53,161 - INFO - Processed orders file size: 0.0 MB
+2025-09-18 07:05:53,161 - INFO - Small dataset detected - using simple processing method
+2025-09-18 07:05:53,162 - INFO - Loading processed orders data...
+2025-09-18 07:05:53,167 - INFO - Converting to Matrixify format (simple processing)...
+2025-09-18 07:05:53,168 - WARNING - Filtered out 21 rows with missing Product Code
+2025-09-18 07:05:53,168 - INFO - Processing orders for Matrixify format...
+2025-09-18 07:05:53,169 - INFO - Conversion completed: 0 records in 0.00 seconds
+2025-09-18 07:05:53,169 - INFO - Saving Matrixify CSV to matrixify-ready-orders/test_matrixify_orders.csv...
+2025-09-18 07:05:53,171 - INFO - Successfully saved 0 records to matrixify-ready-orders/test_matrixify_orders.csv
+2025-09-18 07:05:53,171 - INFO - File size: 0.00 MB
+2025-09-18 07:05:53,171 - INFO - Save time: 0.00 seconds
+2025-09-18 07:05:53,171 - INFO - Validating output file...
+2025-09-18 07:05:53,172 - WARNING - Could not validate output file: No columns to parse from file
+2025-09-18 07:05:53,172 - INFO - 
+============================================================
+2025-09-18 07:05:53,172 - INFO - Conversion completed successfully!
+2025-09-18 07:05:53,172 - INFO - Input records: 21
+2025-09-18 07:05:53,172 - INFO - Output records: 0
+2025-09-18 07:05:53,172 - INFO - Output file: matrixify-ready-orders/test_matrixify_orders.csv
+2025-09-18 07:05:53,172 - INFO - Total execution time: 0.05 seconds
+2025-09-18 07:05:53,173 - INFO - ============================================================

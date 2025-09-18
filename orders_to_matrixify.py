@@ -2,9 +2,13 @@
 """
 Orders to Matrixify CSV Converter
 
-This script converts processed orders from orders.xlsx to Matrixify CSV format.
-Each row represents a line item grouped by Product Code, with proper timestamps
-and all required Matrixify fields.
+This script converts processed orders from region-specific order line items files 
+to Matrixify CSV format. Each row represents a line item grouped by Product Code, 
+with proper timestamps and all required Matrixify fields.
+
+Supports test mode and production mode:
+- Test mode: Processes test_order_line_items_with_product_codes.xlsx
+- Production mode: Processes region-specific files and creates timestamped outputs
 
 Column Mapping:
 - Name -> Ticket Number
@@ -35,21 +39,15 @@ import pandas as pd
 import os
 import sys
 import time
+import glob
 from pathlib import Path
 from datetime import datetime, timedelta
 import logging
 import random
 import re
+import argparse
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('matrixify_converter.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+# Configure logging (will be updated in main() based on mode)
 logger = logging.getLogger(__name__)
 
 
@@ -109,18 +107,64 @@ def generate_timestamp_from_date(date_str):
         return datetime.now().strftime('%-m/%-d/%Y %-H:%M')
 
 
-def get_orders_info():
+def find_processed_orders_file(test_mode=False, region_name=None):
+    """Find the appropriate processed orders file based on mode and region."""
+    try:
+        if test_mode:
+            # Look for test file
+            orders_path = Path("order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx")
+            if not orders_path.exists():
+                raise FileNotFoundError(f"Test processed orders file not found: {orders_path}")
+            return orders_path, "test"
+        else:
+            # Look for region-specific file
+            if region_name:
+                orders_path = Path(f"order-line-items-with-product-codes/{region_name}_order_line_items_with_product_codes.xlsx")
+                if orders_path.exists():
+                    return orders_path, region_name
+                # Try CSV fallback
+                orders_path = Path(f"order-line-items-with-product-codes/{region_name}_order_line_items_with_product_codes.csv")
+                if orders_path.exists():
+                    return orders_path, region_name
+                raise FileNotFoundError(f"Processed orders file not found for region '{region_name}': {orders_path}")
+            else:
+                # Auto-detect available files
+                pattern = "order-line-items-with-product-codes/*_order_line_items_with_product_codes.xlsx"
+                files = glob.glob(pattern)
+                if not files:
+                    # Try CSV files
+                    pattern = "order-line-items-with-product-codes/*_order_line_items_with_product_codes.csv"
+                    files = glob.glob(pattern)
+                
+                if not files:
+                    raise FileNotFoundError("No processed orders files found")
+                
+                if len(files) > 1:
+                    logger.warning(f"Multiple processed files found: {files}")
+                    logger.info("Using the first one. Use --region to specify a specific region.")
+                
+                orders_path = Path(files[0])
+                # Extract region name from filename
+                filename = orders_path.stem
+                region_name = filename.replace('_order_line_items_with_product_codes', '')
+                return orders_path, region_name
+    
+    except Exception as e:
+        logger.error(f"Error finding processed orders file: {e}")
+        sys.exit(1)
+
+
+def get_orders_info(orders_path):
     """Get basic information about processed orders file without loading all data."""
     try:
-        orders_path = Path("processed/orders.xlsx")
-        if not orders_path.exists():
-            raise FileNotFoundError(f"Processed orders file not found: {orders_path}")
-        
         # Read just the first few rows to get column info and estimate size
-        sample_df = pd.read_excel(orders_path, nrows=100, engine='openpyxl')
+        if orders_path.suffix == '.csv':
+            sample_df = pd.read_csv(orders_path, nrows=100)
+        else:
+            sample_df = pd.read_excel(orders_path, nrows=100, engine='openpyxl')
         
         # Get total row count efficiently
-        logger.info("Analyzing processed orders file structure...")
+        logger.info(f"Analyzing processed orders file structure: {orders_path}...")
         
         # Check for required columns
         required_columns = [
@@ -138,7 +182,7 @@ def get_orders_info():
         file_size_mb = orders_path.stat().st_size / (1024 * 1024)
         logger.info(f"Processed orders file size: {file_size_mb:.1f} MB")
         
-        return orders_path, sample_df.columns.tolist(), file_size_mb
+        return sample_df.columns.tolist(), file_size_mb
     
     except Exception as e:
         logger.error(f"Error analyzing processed orders file: {e}")
@@ -178,9 +222,14 @@ def convert_to_matrixify_format_chunked(orders_path, columns):
         chunk_num = 0
         
         # Create output directory
-        output_dir = Path("output")
+        output_dir = Path("matrixify-ready-orders")
         output_dir.mkdir(exist_ok=True)
-        output_path = output_dir / "matrixify_orders.csv"
+        
+        # Generate timestamped filename
+        timestamp = datetime.now().strftime('%Y_%m_%d_%H%M%S')
+        region_name = orders_path.stem.replace('_order_line_items_with_product_codes', '')
+        output_filename = f"{region_name}_matrixify_orders_{timestamp}.csv"
+        output_path = output_dir / output_filename
         
         # Initialize list to store processed chunks
         processed_chunks = []
@@ -388,12 +437,19 @@ def convert_to_matrixify_format_simple(orders_df):
         raise
 
 
-def save_matrixify_csv(matrixify_df, output_filename="matrixify_orders.csv"):
-    """Save the Matrixify DataFrame to CSV."""
+def save_matrixify_csv(matrixify_df, region_name="test", test_mode=False):
+    """Save the Matrixify DataFrame to CSV with timestamped filename."""
     try:
         # Create output directory if it doesn't exist
-        output_dir = Path("output")
+        output_dir = Path("matrixify-ready-orders")
         output_dir.mkdir(exist_ok=True)
+        
+        # Generate timestamped filename
+        if test_mode:
+            output_filename = "test_matrixify_orders.csv"
+        else:
+            timestamp = datetime.now().strftime('%Y_%m_%d_%H%M%S')
+            output_filename = f"{region_name}_matrixify_orders_{timestamp}.csv"
         
         output_path = output_dir / output_filename
         
@@ -466,17 +522,56 @@ def validate_output(output_path):
         logger.warning(f"Could not validate output file: {e}")
 
 
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description='Convert order line items to Matrixify CSV format')
+    parser.add_argument('--test', action='store_true', help='Run in test mode')
+    parser.add_argument('--region', type=str, help='Specific region to process')
+    return parser.parse_args()
+
+
+def setup_logging(test_mode=False, region_name="test"):
+    """Setup logging configuration based on mode."""
+    log_filename = f"logs/matrixify_converter_{region_name}.log" if not test_mode else "logs/matrixify_converter_test.log"
+    
+    # Ensure logs directory exists
+    Path("logs").mkdir(exist_ok=True)
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_filename),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+
 def main():
     """Main function to orchestrate the conversion process."""
     start_time = time.time()
     
-    logger.info("="*60)
-    logger.info("Starting Orders to Matrixify CSV Conversion")
-    logger.info("="*60)
+    # Parse arguments
+    args = parse_arguments()
     
     try:
+        # Find the appropriate processed orders file
+        orders_path, region_name = find_processed_orders_file(args.test, args.region)
+        
+        # Setup logging
+        setup_logging(args.test, region_name)
+        
+        logger.info("="*60)
+        logger.info("Starting Orders to Matrixify CSV Conversion")
+        if args.test:
+            logger.info("Running in TEST MODE")
+        else:
+            logger.info(f"Running in PRODUCTION MODE - Region: {region_name}")
+        logger.info(f"Processing file: {orders_path}")
+        logger.info("="*60)
+        
         # Get orders file information
-        orders_path, columns, file_size_mb = get_orders_info()
+        columns, file_size_mb = get_orders_info(orders_path)
         
         # Check file size to determine processing method
         if file_size_mb < 10:  # Small file - use simple approach
@@ -484,13 +579,16 @@ def main():
             
             # Load the processed orders
             logger.info("Loading processed orders data...")
-            orders_df = pd.read_excel(orders_path, engine='openpyxl')
+            if orders_path.suffix == '.csv':
+                orders_df = pd.read_csv(orders_path)
+            else:
+                orders_df = pd.read_excel(orders_path, engine='openpyxl')
             
             # Convert to Matrixify format
             matrixify_df = convert_to_matrixify_format_simple(orders_df)
             
             # Save to CSV
-            output_path = save_matrixify_csv(matrixify_df)
+            output_path = save_matrixify_csv(matrixify_df, region_name, args.test)
             
             # Validate output
             validate_output(output_path)

@@ -1,27 +1,74 @@
 # PetPlanet Order Data Migration Pipeline
 
-This project provides a complete data migration pipeline for PetPlanet orders, consisting of two main steps:
+This project provides a complete data migration pipeline for PetPlanet orders, supporting multiple regions and optimized for handling large datasets. The pipeline consists of two main steps:
 
 1. **Orders-Products Merger**: Merges orders and products data to add Product Code information
 2. **Matrixify Converter**: Converts processed orders to Matrixify CSV format for Shopify import
+
+## Key Features
+
+- **Multi-Region Support**: Process different regional order files (e.g., Auburn Bay, Beddington)
+- **Test and Production Modes**: Test with small datasets before processing full production data
+- **Scalable Processing**: Handles 40+ regional files with 500k+ orders each
+- **Docker Integration**: Containerized processing with bind mounts for development
+- **Timestamped Outputs**: Unique file naming with timestamps for production runs
+- **Comprehensive Logging**: Region-specific logs for tracking and debugging
+
+## Directory Structure
+
+```
+order-data-migration/
+├── datasource/
+│   ├── original-data/           # Production data
+│   │   ├── Sales_By_Customer_Auburn_Bay.xlsx
+│   │   ├── Sales_By_Customer_Beddington.xlsx
+│   │   └── products.xlsx
+│   └── test-data/               # Small test datasets
+│       ├── orders.xlsx          # ~1,000 test orders
+│       └── products.xlsx        # ~500 test products
+├── order-line-items-with-product-codes/  # Merged data output
+│   ├── test_order_line_items_with_product_codes.xlsx
+│   └── auburn_bay_order_line_items_with_product_codes.xlsx
+├── matrixify-ready-orders/      # Final Matrixify CSV files
+│   ├── test_matrixify_orders.csv
+│   └── auburn_bay_matrixify_orders_2024_09_18_143022.csv
+├── logs/                        # Processing logs
+│   ├── data_merger_test.log
+│   ├── data_merger_auburn_bay.log
+│   ├── matrixify_converter_test.log
+│   └── matrixify_converter_auburn_bay.log
+└── ... (scripts and configs)
+```
 
 ## Overview
 
 ### Step 1: Orders and Products Data Merger
 
-1. Loads orders data from `datasource/orders.xlsx`
-2. Loads products data from `datasource/products.xlsx`
-3. Merges the data using SKU as the foreign key
-4. Adds a "Product Code" column to the orders data
-5. Saves the merged data to `processed/orders.xlsx`
+**Test Mode:**
+
+1. Loads orders from `datasource/test-data/orders.xlsx`
+2. Loads products from `datasource/test-data/products.xlsx`
+3. Saves merged data to `order-line-items-with-product-codes/test_order_line_items_with_product_codes.xlsx`
+
+**Production Mode:**
+
+1. Loads orders from `datasource/original-data/Sales_By_Customer_<Region>.xlsx`
+2. Loads products from `datasource/original-data/products.xlsx`
+3. Extracts region name from filename (e.g., "Auburn_Bay" → "auburn_bay")
+4. Saves merged data to `order-line-items-with-product-codes/<region>_order_line_items_with_product_codes.xlsx`
 
 ### Step 2: Matrixify CSV Conversion
 
-1. Loads processed orders from `processed/orders.xlsx`
-2. Converts data to Matrixify CSV format with proper column mapping
-3. Generates logical timestamps based on order dates
-4. Groups data by Product Code (SKU)
-5. Saves the Matrixify-compatible CSV to `output/matrixify_orders.csv`
+**Test Mode:**
+
+1. Loads processed orders from test file
+2. Saves to `matrixify-ready-orders/test_matrixify_orders.csv`
+
+**Production Mode:**
+
+1. Loads processed orders from region-specific file
+2. Generates timestamped filename: `<region>_matrixify_orders_YYYY_MM_DD_HHMMSS.csv`
+3. Saves to `matrixify-ready-orders/<timestamped_filename>.csv`
 
 ## Data Structure
 
@@ -40,40 +87,85 @@ This project provides a complete data migration pipeline for PetPlanet orders, c
 
 ## Usage
 
-### Option 1: Docker Compose (Recommended - Full Pipeline)
+### Test Mode (Recommended for First Run)
 
-Run the complete pipeline (both steps) with Docker Compose:
+Test the pipeline with small datasets:
 
 ```bash
-# Run the full pipeline
-docker-compose up full-pipeline
+# Run complete test pipeline
+docker-compose up full-pipeline-test
+
+# Or run individual steps in test mode
+docker-compose up merge-orders-test       # Step 1 only
+docker-compose up matrixify-convert-test  # Step 2 only
+```
+
+### Production Mode
+
+#### Method 1: Using Environment Variables
+
+Create a `.env` file (copy from `env.example`):
+
+```bash
+cp env.example .env
+```
+
+Edit `.env` to specify the region:
+
+```bash
+# Option 1: Specify exact filename
+ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
+
+# OR Option 2: Specify region name
+REGION_NAME=auburn_bay
+```
+
+Run the pipeline:
+
+```bash
+# Run complete production pipeline
+docker-compose up full-pipeline-prod
 
 # Or run individual steps
-docker-compose up merge-orders    # Step 1 only
-docker-compose up matrixify-convert  # Step 2 only (requires Step 1 first)
+docker-compose up merge-orders-prod       # Step 1 only
+docker-compose up matrixify-convert-prod  # Step 2 only
 ```
 
-### Option 2: Individual Docker Containers
-
-Run each step separately:
+#### Method 2: Using Inline Environment Variables
 
 ```bash
-# Step 1: Merge orders with products
-docker build -f Dockerfile.merge -t orders-merger .
-docker run --rm -v $(pwd)/datasource:/app/datasource -v $(pwd)/processed:/app/processed orders-merger
+# For Auburn Bay region
+ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx docker-compose up full-pipeline-prod
 
-# Step 2: Convert to Matrixify format
-docker build -f Dockerfile.matrixify -t matrixify-converter .
-docker run --rm -v $(pwd)/processed:/app/processed -v $(pwd)/output:/app/output matrixify-converter
+# For Beddington region
+ORDERS_FILE=Sales_By_Customer_Beddington.xlsx docker-compose up full-pipeline-prod
+
+# Using region name directly
+REGION_NAME=auburn_bay docker-compose up full-pipeline-prod
 ```
 
-### Option 3: Legacy Docker (Step 1 Only)
+### Direct Script Execution (Without Docker)
 
-For backward compatibility:
+#### Test Mode
 
 ```bash
-docker build -t orders-merger .
-docker run --rm -v $(pwd)/processed:/app/processed orders-merger
+# Step 1: Merge orders with products (test mode)
+python merge_orders_products_optimized.py --test
+
+# Step 2: Convert to Matrixify format (test mode)
+python orders_to_matrixify.py --test
+```
+
+#### Production Mode
+
+```bash
+# Step 1: Merge orders with products (production mode)
+python merge_orders_products_optimized.py --orders-file Sales_By_Customer_Auburn_Bay.xlsx
+# OR
+python merge_orders_products_optimized.py --region auburn_bay
+
+# Step 2: Convert to Matrixify format (production mode)
+python orders_to_matrixify.py --region auburn_bay
 ```
 
 ## Troubleshooting
