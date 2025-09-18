@@ -506,6 +506,13 @@ def load_products_data(products_path):
         raise
 
 
+def safe_str(value):
+    """Safely convert a value to string, handling NaN and None values."""
+    if pd.isna(value) or value is None:
+        return ''
+    return str(value).strip()
+
+
 def convert_to_matrixify_format(products_df, mode="test"):
     """Convert products data to Matrixify format with proper variant grouping."""
     try:
@@ -515,18 +522,18 @@ def convert_to_matrixify_format(products_df, mode="test"):
         temp_records = []
         
         for _, row in products_df.iterrows():
-            # Extract key data from the input row
-            product_name = row.get('*Product Name*', '')
-            sku = row.get('SKU', '')
-            price = row.get('*Price*', 0)
-            cost = row.get('Cost', 0)
-            stock_qty = row.get('Stock Quantity', 0)
-            category = row.get('*Category*', '')
-            vendor = row.get('Vendor Name', '')
-            brand = row.get('Brand name', '')
-            description = row.get('Long Description', '')
-            image_url = row.get('Image Url', '')
-            weight = row.get('Weight', 0)
+            # Extract key data from the input row with proper null handling
+            product_name = safe_str(row.get('*Product Name*', ''))
+            sku = safe_str(row.get('SKU', ''))
+            price = row.get('*Price*', 0) if not pd.isna(row.get('*Price*', 0)) else 0
+            cost = row.get('Cost', 0) if not pd.isna(row.get('Cost', 0)) else 0
+            stock_qty = row.get('Stock Quantity', 0) if not pd.isna(row.get('Stock Quantity', 0)) else 0
+            category = safe_str(row.get('*Category*', ''))
+            vendor = safe_str(row.get('Vendor Name', ''))
+            brand = safe_str(row.get('Brand name', ''))
+            description = safe_str(row.get('Long Description', ''))
+            image_url = safe_str(row.get('Image Url', ''))
+            weight = row.get('Weight', 0) if not pd.isna(row.get('Weight', 0)) else 0
             
             # Extract base product name (without size) and size info
             base_name, size_info = extract_base_name_and_size(product_name)
@@ -553,34 +560,84 @@ def convert_to_matrixify_format(products_df, mode="test"):
             
             temp_records.append(temp_record)
         
-        # Group records by handle (base product)
+        # Group records by handle (base product) and remove duplicates
         grouped_products = {}
+        seen_combinations = set()  # Track handle+sku combinations to prevent duplicates
+        
         for record in temp_records:
             handle = record['handle']
+            sku = record['sku']
+            
+            # Skip if we've already seen this handle+sku combination
+            combination_key = f"{handle}_{sku}"
+            if combination_key in seen_combinations:
+                logger.warning(f"Skipping duplicate combination: {handle} with SKU {sku}")
+                continue
+            
+            seen_combinations.add(combination_key)
+            
             if handle not in grouped_products:
                 grouped_products[handle] = []
             grouped_products[handle].append(record)
         
-        logger.info(f"Grouped {len(temp_records)} individual products into {len(grouped_products)} product groups")
+        logger.info(f"Grouped {len(temp_records)} individual products into {len(grouped_products)} product groups (removed duplicates)")
         
         # Create Matrixify records with proper variant structure
         matrixify_data = []
         
         for handle, variants in grouped_products.items():
-            # Sort variants by size for consistent ordering
+            # Remove variants with duplicate sizes within the same product
+            unique_variants = []
+            seen_sizes = set()
+            
+            # Sort variants by size for consistent ordering first
             variants.sort(key=lambda x: extract_numeric_size(x['size']))
+            
+            for variant in variants:
+                size_key = f"{handle}_{variant['size']}"
+                if size_key not in seen_sizes:
+                    unique_variants.append(variant)
+                    seen_sizes.add(size_key)
+                else:
+                    logger.warning(f"Skipping duplicate size '{variant['size']}' for handle '{handle}'")
+            
+            variants = unique_variants
+            
+            # Ensure we have a consistent base name across all variants
+            # Use the most complete base name (longest non-empty one)
+            base_names = [safe_str(v['base_name']) for v in variants if safe_str(v['base_name'])]
+            if base_names:
+                # Use the longest base name as the canonical one
+                canonical_base_name = max(base_names, key=len)
+            else:
+                canonical_base_name = handle.replace('-', ' ').title()
+            
+            # Get the best description and vendor from available variants
+            descriptions = [safe_str(v['description']) for v in variants if safe_str(v['description'])]
+            canonical_description = descriptions[0] if descriptions else ''
+            
+            vendors = [safe_str(v['vendor']) for v in variants if safe_str(v['vendor'])]
+            canonical_vendor = vendors[0] if vendors else ''
+            
+            categories = [safe_str(v['category']) for v in variants if safe_str(v['category'])]
+            canonical_category = categories[0] if categories else ''
             
             for i, variant in enumerate(variants):
                 # Only the first variant gets the full product info, others get blanks
                 is_first_variant = (i == 0)
                 
+                # Ensure first variant always has a title
+                title_value = canonical_base_name if is_first_variant else ''
+                if is_first_variant and (not title_value or not str(title_value).strip()):
+                    title_value = handle.replace('-', ' ').title()
+                
                 matrixify_record = {
                     'Handle': handle,
                     'Command': 'NEW' if is_first_variant else '',
-                    'Title': variant['base_name'] if is_first_variant else '',
-                    'Body HTML': clean_html_description(variant['description']) if is_first_variant else '',
-                    'Vendor': variant['vendor'] if is_first_variant else '',
-                    'Metafield: custom.categories [single_line_text_field]': variant['category'] if is_first_variant else '',
+                    'Title': title_value,
+                    'Body HTML': clean_html_description(canonical_description) if is_first_variant else '',
+                    'Vendor': canonical_vendor if is_first_variant else '',
+                    'Metafield: custom.categories [single_line_text_field]': canonical_category if is_first_variant else '',
                     'Type': 'Pet Supplies' if is_first_variant else '',
                     'Tags': '',
                     'Published': 'TRUE' if is_first_variant else '',
@@ -603,10 +660,10 @@ def convert_to_matrixify_format(products_df, mode="test"):
                     'Variant Barcode': '',
                     'Image Src': variant['image_url'] if is_first_variant else '',
                     'Image Position': '1' if is_first_variant and variant['image_url'] else '',
-                    'Image Alt Text': variant['base_name'] if is_first_variant and variant['image_url'] else '',
+                    'Image Alt Text': canonical_base_name if is_first_variant and variant['image_url'] else '',
                     'Gift Card': 'FALSE' if is_first_variant else '',
-                    'SEO Title': variant['base_name'] if is_first_variant else '',
-                    'SEO Description': create_seo_description(variant['base_name'], variant['description']) if is_first_variant else '',
+                    'SEO Title': canonical_base_name if is_first_variant else '',
+                    'SEO Description': create_seo_description(canonical_base_name, canonical_description) if is_first_variant else '',
                     'Google Shopping / Google Product Category': '',
                     'Google Shopping / Gender': '',
                     'Google Shopping / Age Group': '',
@@ -637,8 +694,21 @@ def convert_to_matrixify_format(products_df, mode="test"):
 
 def extract_base_name_and_size(product_name):
     """Extract base product name and size from full product name."""
-    if not product_name:
+    if not product_name or pd.isna(product_name):
         return 'Unknown Product', 'Standard'
+    
+    # Clean up the product name first
+    base_name = str(product_name).strip()
+    
+    # Remove common suffixes that indicate variants
+    variant_suffixes = [
+        r'\s*-\s*(black|brown|red|blue|green|white|gray|grey)\s*$',  # Color suffixes
+        r'\s*/\s*$',  # Trailing slash
+        r'\s*-\s*$',  # Trailing dash
+    ]
+    
+    for suffix in variant_suffixes:
+        base_name = re.sub(suffix, '', base_name, flags=re.IGNORECASE).strip()
     
     # Common size patterns to remove from the product name
     size_patterns = [
@@ -647,11 +717,10 @@ def extract_base_name_and_size(product_name):
         r'\s*(\d+(?:\.\d+)?\s*(?:oz|ounces?))\s*$',  # Weight: 16oz
         r'\s*(\d+(?:\.\d+)?\s*(?:g|grams?))\s*$',  # Weight: 500g
         r'\s*(\d+\s*(?:pack|count|ct))\s*$',  # Count: 12 pack
-        r'\s*(small|medium|large|xl|xxl)\s*$',  # Size names at end
+        r'\s*(small|medium|large|xl|xxl|x-large)\s*$',  # Size names at end
     ]
     
     extracted_size = 'Standard'
-    base_name = product_name.strip()
     
     # Try to extract size from the end of the product name
     for pattern in size_patterns:
@@ -662,8 +731,15 @@ def extract_base_name_and_size(product_name):
             base_name = re.sub(pattern, '', base_name, flags=re.IGNORECASE).strip()
             break
     
-    # Clean up the base name
+    # Clean up the base name - remove extra spaces and normalize
     base_name = re.sub(r'\s+', ' ', base_name).strip()
+    
+    # Remove trailing punctuation
+    base_name = re.sub(r'[,\-\s]+$', '', base_name).strip()
+    
+    # Ensure we have a valid base name
+    if not base_name or len(base_name) < 2:
+        base_name = 'Unknown Product'
     
     return base_name, extracted_size
 
