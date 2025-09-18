@@ -591,11 +591,11 @@ def main():
             elif args.region:
                 region_name = args.region
             else:
-                logger.error("For production mode, either --orders-file or --region must be specified")
-                sys.exit(1)
+                # No arguments provided - use auto-detection (original behavior)
+                region_name = None
         
         # Find the appropriate processed orders file
-        orders_path, region_name = find_processed_orders_file(args.test, args.region or region_name)
+        orders_path, region_name = find_processed_orders_file(args.test, region_name)
         
         # Setup logging
         setup_logging(args.test, region_name)

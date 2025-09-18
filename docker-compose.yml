@@ -65,10 +65,13 @@ services:
       - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
+      - ORDERS_FILE=${ORDERS_FILE}
       - REGION_NAME=${REGION_NAME}
     command: >
       sh -c "
-        if [ -n \"$$REGION_NAME\" ]; then
+        if [ -n \"$$ORDERS_FILE\" ]; then
+          python orders_to_matrixify.py --orders-file $$ORDERS_FILE
+        elif [ -n \"$$REGION_NAME\" ]; then
           python orders_to_matrixify.py --region $$REGION_NAME
         else
           python orders_to_matrixify.py
