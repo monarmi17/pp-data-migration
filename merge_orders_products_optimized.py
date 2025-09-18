@@ -123,13 +123,19 @@ def load_products_data(test_mode=False):
         sys.exit(1)
 
 
-def get_orders_info(test_mode=False, orders_file=None):
+def get_orders_info(test_mode=False, orders_file=None, region_name=None):
     """Get basic information about orders file without loading all data."""
     try:
         if test_mode:
             orders_path = Path("datasource/test-data/orders.xlsx")
         elif orders_file:
             orders_path = Path(f"datasource/original-data/{orders_file}")
+        elif region_name:
+            # Construct filename from region name
+            # Convert region_name like "auburn_bay" to "Auburn_Bay"
+            formatted_region = '_'.join(word.capitalize() for word in region_name.split('_'))
+            orders_filename = f"Sales_By_Customer_{formatted_region}.xlsx"
+            orders_path = Path(f"datasource/original-data/{orders_filename}")
         else:
             # Default fallback
             orders_path = Path("datasource/original-data/orders.xlsx")
@@ -502,7 +508,7 @@ def main():
     sku_mapping = load_products_data(args.test)
     
     # Get orders file information
-    orders_path, columns = get_orders_info(args.test, args.orders_file)
+    orders_path, columns = get_orders_info(args.test, args.orders_file, region_name)
     
     # Check file size to determine processing method
     file_size_mb = orders_path.stat().st_size / (1024 * 1024)
