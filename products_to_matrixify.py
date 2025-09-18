@@ -693,53 +693,109 @@ def convert_to_matrixify_format(products_df, mode="test"):
 
 
 def extract_base_name_and_size(product_name):
-    """Extract base product name and size from full product name."""
+    """Extract base product name and variant/size from full product name.
+    
+    This function extracts variants from anywhere in the title, not just at the end.
+    For example: 'Kong - Cat Cat Sport Balls 2-Pk Assorted' becomes:
+    - base_name: 'Kong - Cat Cat Sport Balls Assorted' 
+    - size: '2-Pk'
+    """
     if not product_name or pd.isna(product_name):
         return 'Unknown Product', 'Standard'
     
     # Clean up the product name first
-    base_name = str(product_name).strip()
+    original_name = str(product_name).strip()
+    base_name = original_name
     
-    # Remove common suffixes that indicate variants
-    variant_suffixes = [
-        r'\s*-\s*(black|brown|red|blue|green|white|gray|grey)\s*$',  # Color suffixes
-        r'\s*/\s*$',  # Trailing slash
-        r'\s*-\s*$',  # Trailing dash
+    # Comprehensive variant patterns that can appear anywhere in the title
+    variant_patterns = [
+        # Pack/Count variants (most common)
+        r'\b(\d+(?:\.\d+)?[-\s]*(?:pk|pack|pks|packs|piece|pieces|pc|pcs|count|ct))\b',
+        # Weight variants
+        r'\b(\d+(?:\.\d+)?\s*(?:lb|lbs|pound|pounds|kg|kgs|kilogram|kilograms|oz|ounces?|g|grams?))\b',
+        # Size variants
+        r'\b(small|medium|large|xl|xxl|x-large|mini|tiny|giant|jumbo)\b',
+        # Number + unit combinations
+        r'\b(\d+[-\s]*(?:in|inch|inches|cm|mm|ft|feet))\b',
+        # Color variants (when they appear as distinct variants)
+        r'\b(black|brown|red|blue|green|white|gray|grey|pink|purple|yellow|orange)\b',
+        # Multi-pack descriptors
+        r'\b(assorted|mixed|variety|multi[-\s]*pack)\b',
+        # Specific product variants
+        r'\b(\d+[-\s]*(?:way|ways|speed|speeds|level|levels))\b',
     ]
     
-    for suffix in variant_suffixes:
-        base_name = re.sub(suffix, '', base_name, flags=re.IGNORECASE).strip()
+    extracted_variants = []
     
-    # Common size patterns to remove from the product name
-    size_patterns = [
-        r'\s*(\d+(?:\.\d+)?\s*(?:lb|lbs|pound|pounds))\s*$',  # Weight at end: 40lb, 21lb
-        r'\s*(\d+(?:\.\d+)?\s*(?:kg|kgs|kilogram|kilograms))\s*$',  # Weight: 9.7kg
-        r'\s*(\d+(?:\.\d+)?\s*(?:oz|ounces?))\s*$',  # Weight: 16oz
-        r'\s*(\d+(?:\.\d+)?\s*(?:g|grams?))\s*$',  # Weight: 500g
-        r'\s*(\d+\s*(?:pack|count|ct))\s*$',  # Count: 12 pack
-        r'\s*(small|medium|large|xl|xxl|x-large)\s*$',  # Size names at end
-    ]
+    # Extract variants found in the title, but be selective about what to remove
+    for i, pattern in enumerate(variant_patterns):
+        matches = re.findall(pattern, base_name, re.IGNORECASE)
+        for match in matches:
+            # Normalize the variant
+            variant = match.strip().replace(' ', '-')
+            if variant and variant not in extracted_variants:
+                extracted_variants.append(variant)
+                
+                # Only remove certain types of variants from the base name
+                # Pack/count variants and weights should be removed, but colors and sizes should stay
+                should_remove = False
+                
+                if i == 0:  # Pack/Count variants - remove these
+                    should_remove = True
+                elif i == 1:  # Weight variants - remove these
+                    should_remove = True
+                elif i == 2 and len(extracted_variants) > 1:  # Size variants - only remove if we have other variants
+                    should_remove = True
+                # Colors and other descriptors stay in the base name
+                
+                if should_remove:
+                    # Remove this variant from the base name
+                    base_name = re.sub(re.escape(match), '', base_name, flags=re.IGNORECASE)
     
-    extracted_size = 'Standard'
-    
-    # Try to extract size from the end of the product name
-    for pattern in size_patterns:
-        match = re.search(pattern, base_name, re.IGNORECASE)
-        if match:
-            extracted_size = match.group(1).strip()
-            # Remove the size from the base name
-            base_name = re.sub(pattern, '', base_name, flags=re.IGNORECASE).strip()
-            break
-    
-    # Clean up the base name - remove extra spaces and normalize
+    # Clean up the base name after removing variants
+    base_name = re.sub(r'\s+', ' ', base_name).strip()
+    base_name = re.sub(r'[-\s,]+$', '', base_name).strip()
+    base_name = re.sub(r'^[-\s,]+', '', base_name).strip()
+    base_name = re.sub(r'\s*-\s*-\s*', ' - ', base_name)  # Fix double dashes
     base_name = re.sub(r'\s+', ' ', base_name).strip()
     
-    # Remove trailing punctuation
-    base_name = re.sub(r'[,\-\s]+$', '', base_name).strip()
+    # If we extracted variants, use the first/most significant one
+    if extracted_variants:
+        # Prioritize pack/count variants, then weight, then size
+        primary_variant = None
+        
+        # Look for pack/count variants first
+        for variant in extracted_variants:
+            if re.search(r'\d+.*(?:pk|pack|piece|count|ct)', variant, re.IGNORECASE):
+                primary_variant = variant
+                break
+        
+        # If no pack variant, look for weight
+        if not primary_variant:
+            for variant in extracted_variants:
+                if re.search(r'\d+.*(?:lb|kg|oz|gram)', variant, re.IGNORECASE):
+                    primary_variant = variant
+                    break
+        
+        # Otherwise use the first variant found
+        if not primary_variant:
+            primary_variant = extracted_variants[0]
+        
+        extracted_size = primary_variant.title()
+    else:
+        extracted_size = 'Standard'
     
     # Ensure we have a valid base name
-    if not base_name or len(base_name) < 2:
-        base_name = 'Unknown Product'
+    if not base_name or len(base_name.strip()) < 2:
+        base_name = original_name
+        extracted_size = 'Standard'
+    
+    # Final cleanup of base name
+    base_name = base_name.strip()
+    if base_name.endswith(' -'):
+        base_name = base_name[:-2].strip()
+    if base_name.startswith('- '):
+        base_name = base_name[2:].strip()
     
     return base_name, extracted_size
 
@@ -776,26 +832,16 @@ def create_handle_from_name(product_name):
 
 
 def extract_size_from_name(product_name):
-    """Extract size information from product name."""
+    """Extract size information from product name.
+    
+    This function is kept for backward compatibility but now uses the
+    improved extract_base_name_and_size function.
+    """
     if not product_name:
         return 'Standard'
     
-    # Look for common size patterns
-    size_patterns = [
-        r'(\d+(?:\.\d+)?\s*(?:lb|lbs|pound|pounds))',  # Weight: 40lb, 21lb
-        r'(\d+(?:\.\d+)?\s*(?:kg|kgs|kilogram|kilograms))',  # Weight: 9.7kg
-        r'(\d+(?:\.\d+)?\s*(?:oz|ounces?))',  # Weight: 16oz
-        r'(\d+(?:\.\d+)?\s*(?:g|grams?))',  # Weight: 500g
-        r'(\d+\s*(?:pack|count|ct))',  # Count: 12 pack
-        r'(small|medium|large|xl|xxl)',  # Size names
-    ]
-    
-    for pattern in size_patterns:
-        match = re.search(pattern, product_name.lower())
-        if match:
-            return match.group(1).strip()
-    
-    return 'Standard'
+    _, size_info = extract_base_name_and_size(product_name)
+    return size_info
 
 
 def clean_html_description(description):
