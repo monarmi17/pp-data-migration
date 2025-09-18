@@ -275,8 +275,9 @@ def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test"):
         logger.info(f"Starting chunked processing with chunk size: {CHUNK_SIZE:,}")
         logger.info("Note: Converting Excel to CSV first for chunked processing...")
         
-        # Create temporary CSV file for chunked processing
-        temp_csv_path = Path("temp_orders.csv")
+        # Create temporary CSV file for chunked processing in a writable directory
+        import tempfile
+        temp_csv_path = Path(tempfile.gettempdir()) / "temp_orders.csv"
         
         # Convert Excel to CSV first
         logger.info("Converting Excel file to CSV for chunked processing...")
@@ -405,7 +406,8 @@ def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test"):
     except Exception as e:
         logger.error(f"Error in chunked processing: {e}")
         # Clean up temporary file on error
-        temp_csv_path = Path("temp_orders.csv")
+        import tempfile
+        temp_csv_path = Path(tempfile.gettempdir()) / "temp_orders.csv"
         if temp_csv_path.exists():
             temp_csv_path.unlink()
         sys.exit(1)

@@ -195,8 +195,9 @@ def convert_to_matrixify_format_chunked(orders_path, columns):
         logger.info("Starting chunked Matrixify conversion...")
         logger.info("Note: Converting Excel to CSV first for chunked processing...")
         
-        # Create temporary CSV file for chunked processing
-        temp_csv_path = Path("temp_processed_orders.csv")
+        # Create temporary CSV file for chunked processing in a writable directory
+        import tempfile
+        temp_csv_path = Path(tempfile.gettempdir()) / "temp_processed_orders.csv"
         
         # Convert Excel to CSV first
         logger.info("Converting Excel file to CSV for chunked processing...")
@@ -273,8 +274,13 @@ def convert_to_matrixify_format_chunked(orders_path, columns):
                 quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
                 
                 # Create Matrixify row
+                # Handle NaN values in Ticket number
+                ticket_number = row['Ticket number']
+                if pd.isna(ticket_number):
+                    ticket_number = 0  # Default value for missing ticket numbers
+                
                 matrixify_row = {
-                    'Name': str(int(row['Ticket number'])),  # Convert to string, ensure no decimals
+                    'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                     'Command': 'NEW',
                     'Processed At': processed_at,
                     'Customer: Email': customer_email,
@@ -358,7 +364,8 @@ def convert_to_matrixify_format_chunked(orders_path, columns):
     except Exception as e:
         logger.error(f"Error in chunked conversion: {e}")
         # Clean up temporary file on error
-        temp_csv_path = Path("temp_processed_orders.csv")
+        import tempfile
+        temp_csv_path = Path(tempfile.gettempdir()) / "temp_processed_orders.csv"
         if temp_csv_path.exists():
             temp_csv_path.unlink()
         raise
@@ -396,8 +403,13 @@ def convert_to_matrixify_format_simple(orders_df):
             quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
             
             # Create Matrixify row
+            # Handle NaN values in Ticket number
+            ticket_number = row['Ticket number']
+            if pd.isna(ticket_number):
+                ticket_number = 0  # Default value for missing ticket numbers
+            
             matrixify_row = {
-                'Name': str(int(row['Ticket number'])),  # Convert to string, ensure no decimals
+                'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                 'Command': 'NEW',
                 'Processed At': processed_at,
                 'Customer: Email': customer_email,
