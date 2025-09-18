@@ -98,8 +98,8 @@ def load_products_data(test_mode=False):
         if 'Product Code' not in products_df.columns:
             raise ValueError("'Product Code' column not found in products data")
         
-        # Normalize SKU format - ensure all SKUs are strings
-        products_df['SKU'] = products_df['SKU'].astype(str)
+        # Normalize SKU format - ensure all SKUs are strings and zero-padded to 12 digits
+        products_df['SKU'] = pd.to_numeric(products_df['SKU'], errors='coerce').fillna(0).astype('int64').astype(str).str.zfill(12)
         
         # Remove any duplicate SKUs and keep first occurrence
         initial_count = len(products_df)
