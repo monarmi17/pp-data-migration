@@ -8,17 +8,23 @@ processed/
 output/
 output/matrixify_orders.csv
 
-# New directory structure - output directories
-order-line-items-with-product-codes/
-matrixify-ready-orders/
-import-results/
+# New directory structure - output directories (ignore contents but keep directories)
+order-line-items-with-product-codes/*
+!order-line-items-with-product-codes/.gitkeep
+matrixify-ready-orders/*
+!matrixify-ready-orders/.gitkeep
+import-results/*
+!import-results/.gitkeep
 
-# Error/ignored rows directory
-error-rows/
+# Error/ignored rows directory (ignore contents but keep directory)
+error-rows/*
+!error-rows/.gitkeep
 
-# Error analysis directory
-error-analysis/
+# Error analysis directory (ignore contents but keep directory)
+error-analysis/*
+!error-analysis/.gitkeep
 
-# Log files and directory
-logs/
+# Log files and directory (ignore contents but keep directory)
+logs/*
+!logs/.gitkeep
 *.log
