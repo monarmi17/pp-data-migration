@@ -108,8 +108,10 @@ services:
     command: >
       sh -c "
         if [ -n \"$$ORDERS_FILE\" ]; then
-          python merge_orders_products_optimized.py --orders-file $$ORDERS_FILE && python orders_to_matrixify.py --region $$(echo $$ORDERS_FILE | sed -E 's/Sales_By_Customer_([^.]+).*/\1/' | tr '[:upper:]' '[:lower:]' | sed 's/ /_/g')
+          echo 'Running with ORDERS_FILE: '$$ORDERS_FILE
+          python merge_orders_products_optimized.py --orders-file $$ORDERS_FILE && python orders_to_matrixify.py
         elif [ -n \"$$REGION_NAME\" ]; then
+          echo 'Running with REGION_NAME: '$$REGION_NAME
           python merge_orders_products_optimized.py --region $$REGION_NAME && python orders_to_matrixify.py --region $$REGION_NAME
         else
           echo 'Error: Either ORDERS_FILE or REGION_NAME environment variable must be set for production mode'
