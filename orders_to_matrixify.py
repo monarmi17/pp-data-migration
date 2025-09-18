@@ -189,7 +189,7 @@ def get_orders_info(orders_path):
         sys.exit(1)
 
 
-def convert_to_matrixify_format_chunked(orders_path, columns):
+def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"):
     """Convert orders data to Matrixify CSV format using chunked processing for large files."""
     try:
         logger.info("Starting chunked Matrixify conversion...")
@@ -216,11 +216,12 @@ def convert_to_matrixify_format_chunked(orders_path, columns):
         conversion_time = time.time() - conversion_start
         logger.info(f"Conversion completed in {conversion_time:.2f} seconds. Total records: {total_records:,}")
         
-        # Initialize counters
+        # Initialize counters and error tracking
         total_processed = 0
         total_mapped = 0
         total_unmapped = 0
         chunk_num = 0
+        all_error_rows = []
         
         # Create output directory
         output_dir = Path("matrixify-ready-orders")
@@ -250,6 +251,15 @@ def convert_to_matrixify_format_chunked(orders_path, columns):
             
             # Filter out rows where Product Code is NaN (unmapped products)
             initial_count = len(chunk_df)
+            missing_product_code_mask = chunk_df['Product Code'].isna()
+            
+            # Track rows with missing Product Code
+            if missing_product_code_mask.any():
+                missing_rows = chunk_df[missing_product_code_mask].copy()
+                missing_rows['Error_Reason'] = 'Missing Product Code - should have been filtered in merge step'
+                missing_rows['Chunk_Number'] = chunk_num
+                all_error_rows.append(missing_rows)
+            
             chunk_df = chunk_df.dropna(subset=['Product Code'])
             filtered_count = len(chunk_df)
             
@@ -322,6 +332,10 @@ def convert_to_matrixify_format_chunked(orders_path, columns):
             del chunk_df, matrixify_chunk_df, matrixify_data
             gc.collect()
         
+        # Save error rows if any
+        if all_error_rows:
+            save_error_rows(all_error_rows, region_name, "matrixify")
+        
         # Clean up temporary CSV file
         if temp_csv_path.exists():
             temp_csv_path.unlink()
@@ -371,14 +385,24 @@ def convert_to_matrixify_format_chunked(orders_path, columns):
         raise
 
 
-def convert_to_matrixify_format_simple(orders_df):
+def convert_to_matrixify_format_simple(orders_df, region_name="test"):
     """Convert orders data to Matrixify CSV format for small datasets."""
     try:
         logger.info("Converting to Matrixify format (simple processing)...")
         start_time = time.time()
         
+        # Track error rows
+        error_rows = []
+        
         # Filter out rows where Product Code is NaN (unmapped products)
         initial_count = len(orders_df)
+        missing_product_code_mask = orders_df['Product Code'].isna()
+        
+        if missing_product_code_mask.any():
+            missing_rows = orders_df[missing_product_code_mask].copy()
+            missing_rows['Error_Reason'] = 'Missing Product Code - should have been filtered in merge step'
+            error_rows.append(missing_rows)
+        
         orders_df = orders_df.dropna(subset=['Product Code'])
         filtered_count = len(orders_df)
         
@@ -435,6 +459,10 @@ def convert_to_matrixify_format_simple(orders_df):
             # Log progress for large datasets
             if (index + 1) % 10000 == 0:
                 logger.info(f"Processed {index + 1:,} records...")
+        
+        # Save error rows if any
+        if error_rows:
+            save_error_rows(error_rows, region_name, "matrixify")
         
         # Create DataFrame
         matrixify_df = pd.DataFrame(matrixify_data)
@@ -545,6 +573,33 @@ def extract_region_from_filename(filename):
     return None
 
 
+def save_error_rows(error_rows_list, region_name, step_name):
+    """Save error/ignored rows to a separate file for manual review."""
+    try:
+        if not error_rows_list:
+            return
+        
+        # Create error-rows directory
+        error_dir = Path("error-rows")
+        error_dir.mkdir(exist_ok=True)
+        
+        # Combine all error rows
+        all_error_rows = pd.concat(error_rows_list, ignore_index=True)
+        
+        # Create timestamped filename following naming convention
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S")
+        error_filename = f"{region_name}_{step_name}_error_rows_{timestamp}.xlsx"
+        error_path = error_dir / error_filename
+        
+        # Save error rows to Excel file
+        all_error_rows.to_excel(error_path, index=False, engine='openpyxl')
+        
+        logger.info(f"Saved {len(all_error_rows):,} error/ignored rows to: {error_path}")
+        
+    except Exception as e:
+        logger.warning(f"Could not save error rows: {e}")
+
+
 def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Convert order line items to Matrixify CSV format')
@@ -624,7 +679,7 @@ def main():
                 orders_df = pd.read_excel(orders_path, engine='openpyxl')
             
             # Convert to Matrixify format
-            matrixify_df = convert_to_matrixify_format_simple(orders_df)
+            matrixify_df = convert_to_matrixify_format_simple(orders_df, region_name)
             
             # Save to CSV
             output_path = save_matrixify_csv(matrixify_df, region_name, args.test)
@@ -646,7 +701,7 @@ def main():
             logger.info("Large dataset detected - using chunked processing method")
             
             # Convert to Matrixify format using chunked processing
-            output_path, total_processed, total_mapped, total_unmapped = convert_to_matrixify_format_chunked(orders_path, columns)
+            output_path, total_processed, total_mapped, total_unmapped = convert_to_matrixify_format_chunked(orders_path, columns, region_name)
             
             # Validate output
             validate_output(output_path)

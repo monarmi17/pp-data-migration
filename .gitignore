@@ -12,6 +12,9 @@ output/matrixify_orders.csv
 order-line-items-with-product-codes/
 matrixify-ready-orders/
 
+# Error/ignored rows directory
+error-rows/
+
 # Log files and directory
 logs/
 *.log

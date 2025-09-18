@@ -128,32 +128,39 @@ def get_orders_info(test_mode=False, orders_file=None, region_name=None):
     try:
         if test_mode:
             orders_path = Path("datasource/test-data/orders.xlsx")
+            skiprows = 0  # Test data has no extra header rows
         elif orders_file:
             orders_path = Path(f"datasource/original-data/{orders_file}")
+            skiprows = 2  # Original data has 2 extra header rows to skip
         elif region_name:
             # Construct filename from region name
             # Convert region_name like "auburn_bay" to "Auburn_Bay"
             formatted_region = '_'.join(word.capitalize() for word in region_name.split('_'))
             orders_filename = f"Sales_By_Customer_{formatted_region}.xlsx"
             orders_path = Path(f"datasource/original-data/{orders_filename}")
+            skiprows = 2  # Original data has 2 extra header rows to skip
         else:
             # Default fallback
             orders_path = Path("datasource/original-data/orders.xlsx")
+            skiprows = 2  # Original data has 2 extra header rows to skip
             
         if not orders_path.exists():
             raise FileNotFoundError(f"Orders file not found: {orders_path}")
         
         # Read just the first few rows to get column info and estimate size
-        sample_df = pd.read_excel(orders_path, nrows=100, engine='openpyxl')
+        # Skip the first 2 rows for original data, 0 rows for test data
+        sample_df = pd.read_excel(orders_path, nrows=100, skiprows=skiprows, engine='openpyxl')
         
         # Get total row count efficiently
         logger.info(f"Analyzing orders file structure: {orders_path}...")
+        if skiprows > 0:
+            logger.info(f"Skipping first {skiprows} header rows for original data")
         
         # Check for required columns
         if 'Product' not in sample_df.columns:
             raise ValueError("'Product' column not found in orders data")
         
-        return orders_path, sample_df.columns.tolist()
+        return orders_path, sample_df.columns.tolist(), skiprows
     
     except Exception as e:
         logger.error(f"Error analyzing orders file: {e}")
@@ -207,7 +214,34 @@ def reorder_columns(df):
     return df
 
 
-def merge_data_simple(orders_path, columns, sku_mapping, region_name="test"):
+def save_error_rows(error_rows_list, region_name, step_name):
+    """Save error/ignored rows to a separate file for manual review."""
+    try:
+        if not error_rows_list:
+            return
+        
+        # Create error-rows directory
+        error_dir = Path("error-rows")
+        error_dir.mkdir(exist_ok=True)
+        
+        # Combine all error rows
+        all_error_rows = pd.concat(error_rows_list, ignore_index=True)
+        
+        # Create timestamped filename following naming convention
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S")
+        error_filename = f"{region_name}_{step_name}_error_rows_{timestamp}.xlsx"
+        error_path = error_dir / error_filename
+        
+        # Save error rows to Excel file
+        all_error_rows.to_excel(error_path, index=False, engine='openpyxl')
+        
+        logger.info(f"Saved {len(all_error_rows):,} error/ignored rows to: {error_path}")
+        
+    except Exception as e:
+        logger.warning(f"Could not save error rows: {e}")
+
+
+def merge_data_simple(orders_path, columns, sku_mapping, region_name="test", skiprows=0):
     """
     Simple merge for small datasets - loads entire file into memory.
     """
@@ -215,8 +249,11 @@ def merge_data_simple(orders_path, columns, sku_mapping, region_name="test"):
         logger.info("Loading orders data for simple processing...")
         start_time = time.time()
         
-        # Load entire orders file
-        orders_df = pd.read_excel(orders_path, engine='openpyxl')
+        # Load entire orders file with proper skiprows
+        orders_df = pd.read_excel(orders_path, skiprows=skiprows, engine='openpyxl')
+        
+        # Track error/ignored rows
+        error_rows = []
         
         # Normalize Product column format to match SKU format
         # Handle NaN/inf values and convert to integer first (to remove decimal), then to string and pad with leading zeros to 12 digits
@@ -224,6 +261,13 @@ def merge_data_simple(orders_path, columns, sku_mapping, region_name="test"):
         
         # Add Product Code column using vectorized mapping
         orders_df['Product Code'] = orders_df['Product_normalized'].map(sku_mapping)
+        
+        # Identify rows with missing Product Code (unmapped SKUs)
+        unmapped_mask = orders_df['Product Code'].isna()
+        if unmapped_mask.any():
+            unmapped_rows = orders_df[unmapped_mask].copy()
+            unmapped_rows['Error_Reason'] = 'Product SKU not found in products database'
+            error_rows.append(unmapped_rows)
         
         # Drop the temporary normalized column
         orders_df = orders_df.drop(columns=['Product_normalized'])
@@ -239,6 +283,10 @@ def merge_data_simple(orders_path, columns, sku_mapping, region_name="test"):
                 logger.warning(f"Unmapped SKUs: {list(unmapped_skus)}")
             else:
                 logger.warning(f"First 10 unmapped SKUs: {list(unmapped_skus[:10])}")
+        
+        # Save error/ignored rows if any
+        if error_rows:
+            save_error_rows(error_rows, region_name, "merge")
         
         # Reorder columns
         orders_df = reorder_columns(orders_df)
@@ -272,7 +320,7 @@ def merge_data_simple(orders_path, columns, sku_mapping, region_name="test"):
         sys.exit(1)
 
 
-def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test"):
+def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test", skiprows=0):
     """
     Merge orders and products data using chunked processing for memory efficiency.
     Since pd.read_excel doesn't support chunksize, we'll convert to CSV first and then process in chunks.
@@ -289,8 +337,8 @@ def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test"):
         logger.info("Converting Excel file to CSV for chunked processing...")
         conversion_start = time.time()
         
-        # Read Excel file and save as CSV
-        orders_df_full = pd.read_excel(orders_path, engine='openpyxl')
+        # Read Excel file with proper skiprows and save as CSV
+        orders_df_full = pd.read_excel(orders_path, skiprows=skiprows, engine='openpyxl')
         orders_df_full.to_csv(temp_csv_path, index=False)
         total_records = len(orders_df_full)
         
@@ -301,11 +349,12 @@ def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test"):
         conversion_time = time.time() - conversion_start
         logger.info(f"Conversion completed in {conversion_time:.2f} seconds. Total records: {total_records:,}")
         
-        # Initialize counters
+        # Initialize counters and error tracking
         total_processed = 0
         total_mapped = 0
         total_unmapped = 0
         chunk_num = 0
+        all_error_rows = []
         
         # Create processed directory
         processed_dir = Path("order-line-items-with-product-codes")
@@ -333,6 +382,14 @@ def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test"):
                 chunk_df, sku_mapping, chunk_num, total_chunks
             )
             
+            # Track error rows for this chunk
+            unmapped_mask = processed_chunk['Product Code'].isna()
+            if unmapped_mask.any():
+                chunk_error_rows = processed_chunk[unmapped_mask].copy()
+                chunk_error_rows['Error_Reason'] = 'Product SKU not found in products database'
+                chunk_error_rows['Chunk_Number'] = chunk_num
+                all_error_rows.append(chunk_error_rows)
+            
             # Reorder columns
             processed_chunk = reorder_columns(processed_chunk)
             
@@ -354,6 +411,10 @@ def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test"):
             # Clean up chunk to free memory
             del chunk_df, processed_chunk
             gc.collect()
+        
+        # Save error rows if any
+        if all_error_rows:
+            save_error_rows(all_error_rows, region_name, "merge")
         
         # Clean up temporary CSV file
         if temp_csv_path.exists():
@@ -508,7 +569,7 @@ def main():
     sku_mapping = load_products_data(args.test)
     
     # Get orders file information
-    orders_path, columns = get_orders_info(args.test, args.orders_file, region_name)
+    orders_path, columns, skiprows = get_orders_info(args.test, args.orders_file, region_name)
     
     # Check file size to determine processing method
     file_size_mb = orders_path.stat().st_size / (1024 * 1024)
@@ -517,12 +578,12 @@ def main():
     if file_size_mb < 10:  # Small file - use simple approach
         logger.info("Small dataset detected - using simple processing method")
         total_processed, total_mapped, total_unmapped = merge_data_simple(
-            orders_path, columns, sku_mapping, region_name
+            orders_path, columns, sku_mapping, region_name, skiprows
         )
     else:  # Large file - use chunked processing
         logger.info("Large dataset detected - using chunked processing method")
         total_processed, total_mapped, total_unmapped = merge_data_chunked(
-            orders_path, columns, sku_mapping, region_name
+            orders_path, columns, sku_mapping, region_name, skiprows
         )
     
     # Validate output
