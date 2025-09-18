@@ -10,10 +10,10 @@ Column Mapping:
 - Name -> Ticket Number
 - Command -> Always 'NEW'
 - Processed At -> Generated timestamp based on Date
-- Customer: Email -> Email
+- Customer: Email -> Email (validated, blank if invalid)
 - Line: Type -> Always 'Line Item'
 - Line: SKU -> Product Code
-- Line: Quantity -> Product quantity
+- Line: Quantity -> Product quantity (minimum 1)
 - Line: Price -> Price ($)
 - Line: Grams -> Always 0 (as per template)
 - Line: Requires Shipping -> Always TRUE
@@ -39,6 +39,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import logging
 import random
+import re
 
 # Configure logging
 logging.basicConfig(
@@ -50,6 +51,18 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+def is_valid_email(email):
+    """
+    Check if the email is valid using basic regex pattern.
+    Returns True if valid, False otherwise.
+    """
+    if pd.isna(email) or email == '' or str(email).strip() == '' or str(email).lower() == 'nan':
+        return False
+    
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(email_pattern, str(email).strip()))
 
 
 def generate_timestamp_from_date(date_str):
@@ -202,15 +215,23 @@ def convert_to_matrixify_format_chunked(orders_path, columns):
                 # Generate timestamp from date
                 processed_at = generate_timestamp_from_date(row['Date'])
                 
+                # Validate and clean email
+                customer_email = ''
+                if is_valid_email(row['Email']):
+                    customer_email = str(row['Email']).strip()
+                
+                # Ensure quantity is at least 1
+                quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
+                
                 # Create Matrixify row
                 matrixify_row = {
                     'Name': str(int(row['Ticket number'])),  # Convert to string, ensure no decimals
                     'Command': 'NEW',
                     'Processed At': processed_at,
-                    'Customer: Email': str(row['Email']).strip(),
+                    'Customer: Email': customer_email,
                     'Line: Type': 'Line Item',
                     'Line: SKU': str(row['Product Code']).strip(),  # Keep as string, don't force to int
-                    'Line: Quantity': int(row['Product quantity']),
+                    'Line: Quantity': quantity,
                     'Line: Price': float(row['Price ($)']),
                     'Line: Grams': 0,
                     'Line: Requires Shipping': 'TRUE',
@@ -317,15 +338,23 @@ def convert_to_matrixify_format_simple(orders_df):
             # Generate timestamp from date
             processed_at = generate_timestamp_from_date(row['Date'])
             
+            # Validate and clean email
+            customer_email = ''
+            if is_valid_email(row['Email']):
+                customer_email = str(row['Email']).strip()
+            
+            # Ensure quantity is at least 1
+            quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
+            
             # Create Matrixify row
             matrixify_row = {
                 'Name': str(int(row['Ticket number'])),  # Convert to string, ensure no decimals
                 'Command': 'NEW',
                 'Processed At': processed_at,
-                'Customer: Email': str(row['Email']).strip(),
+                'Customer: Email': customer_email,
                 'Line: Type': 'Line Item',
                 'Line: SKU': str(row['Product Code']).strip(),  # Keep as string, don't force to int
-                'Line: Quantity': int(row['Product quantity']),
+                'Line: Quantity': quantity,
                 'Line: Price': float(row['Price ($)']),
                 'Line: Grams': 0,
                 'Line: Requires Shipping': 'TRUE',
