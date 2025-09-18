@@ -1,9 +1,17 @@
 .DS_Store
 .env
 
-# Processed output directory
+# Processed output directory (legacy)
 processed/
 
-# Output directory with Matrixify CSV files
+# Output directory with Matrixify CSV files (legacy)
 output/
 output/matrixify_orders.csv
+
+# New directory structure - output directories
+order-line-items-with-product-codes/
+matrixify-ready-orders/
+
+# Log files and directory
+logs/
+*.log
