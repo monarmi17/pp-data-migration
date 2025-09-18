@@ -22,8 +22,6 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     command: python orders_to_matrixify.py
-    depends_on:
-      - merge-orders
 
   # Combined service that runs both steps sequentially
   full-pipeline:
