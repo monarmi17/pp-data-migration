@@ -70,9 +70,10 @@ error-rows/                 # NEW: Error/ignored rows tracking
   - Production mode: Uses `datasource/original-data/` (skip first 2 header rows)
 
 - **Region-specific outputs:**
+
   - `{region}_order_line_items_with_product_codes.xlsx`
 
-- **Error tracking:** 
+- **Error tracking:**
   - Saves unmapped SKUs to `error-rows/{region}_merge_error_rows_{timestamp}.xlsx`
   - Includes detailed error reasons and chunk numbers for debugging
 
@@ -87,6 +88,7 @@ error-rows/                 # NEW: Error/ignored rows tracking
 - **Auto-detection:** Finds available processed files if no region specified
 
 - **Timestamped outputs:**
+
   - Test: `test_matrixify_orders.csv`
   - Production: `{region}_matrixify_orders_YYYY_MM_DD_HHMMSS.csv`
 
@@ -99,6 +101,7 @@ error-rows/                 # NEW: Error/ignored rows tracking
 **Problem Solved:** Original data files contain metadata rows that need to be skipped
 
 **Implementation:**
+
 - **Original Data Files:** Skip first 2 rows (metadata + empty row)
   - Row 0: `Start date: 1/1/2018 End date: 9/11/2025`
   - Row 1: Empty row
@@ -111,17 +114,20 @@ error-rows/                 # NEW: Error/ignored rows tracking
 ### 4. Error/Ignored Row Tracking System ✅
 
 **Comprehensive Error Management:**
+
 - **Directory:** `error-rows/` for all error files
 - **Naming Convention:** `{region}_{step}_error_rows_{timestamp}.xlsx`
 - **Error Details:** Each row includes `Error_Reason` column with specific issue
 - **Chunk Tracking:** Includes `Chunk_Number` for chunked processing debugging
 
 **Error Types Tracked:**
+
 - **Merge Step:** Unmapped SKUs (Product not found in database)
 - **Matrixify Step:** Missing Product Code, conversion failures
 - **Data Quality:** Invalid formats, missing required fields
 
 **Benefits:**
+
 - Manual review of problematic data
 - Data quality improvement insights
 - Audit trail for processing issues
@@ -144,6 +150,7 @@ error-rows/                 # NEW: Error/ignored rows tracking
 - **Error tracking:** `error-rows/` directory bind-mounted for error file persistence
 
 **Environment Variable Priority:**
+
 - `ORDERS_FILE` takes precedence over `REGION_NAME` if both are set
 - Production services require either `ORDERS_FILE` or `REGION_NAME`
 - Test services don't require environment variables
@@ -171,6 +178,7 @@ docker compose run --rm matrixify-convert-test
 #### Production Mode
 
 **Option 1: Using .env file (Recommended)**
+
 ```bash
 # Create environment file
 cp env.example .env
@@ -189,6 +197,7 @@ docker compose run --rm matrixify-convert-prod
 ```
 
 **Option 2: Inline environment variables**
+
 ```bash
 # Using specific orders file
 ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx docker compose run --rm full-pipeline-prod
@@ -202,6 +211,7 @@ REGION_NAME=beddington docker compose run --rm matrixify-convert-prod
 ```
 
 **Option 3: Direct script execution**
+
 ```bash
 # Test mode
 python merge_orders_products_optimized.py --test
@@ -219,12 +229,14 @@ python orders_to_matrixify.py --orders-file Sales_By_Customer_Beddington.xlsx
 #### Environment Variables Reference
 
 **For Production Services:**
+
 - `ORDERS_FILE`: Exact filename (e.g., `Sales_By_Customer_Auburn_Bay.xlsx`)
 - `REGION_NAME`: Region identifier (e.g., `auburn_bay`, `beddington`)
 
 **Priority:** `ORDERS_FILE` takes precedence if both are set
 
 **Examples:**
+
 ```bash
 # .env file content
 ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
@@ -243,14 +255,14 @@ ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
 - **Merged data:** `order-line-items-with-product-codes/{region}_order_line_items_with_product_codes.xlsx`
 - **Matrixify CSV:** `matrixify-ready-orders/{region}_matrixify_orders_YYYY_MM_DD_HHMMSS.csv`
 - **Logs:** `logs/data_merger_{region}.log`, `logs/matrixify_converter_{region}.log`
-- **Error files (if any):** 
+- **Error files (if any):**
   - `error-rows/{region}_merge_error_rows_YYYY_MM_DD_HHMMSS.xlsx`
   - `error-rows/{region}_matrixify_error_rows_YYYY_MM_DD_HHMMSS.xlsx`
 
 ## Benefits Achieved
 
 1. **Scalability:** Can process 40+ regional files efficiently
-2. **Clear Organization:** Descriptive folder names eliminate confusion  
+2. **Clear Organization:** Descriptive folder names eliminate confusion
 3. **Development Efficiency:** Bind mounts eliminate rebuild requirements
 4. **Traceability:** Region-specific logs for debugging and auditing
 5. **Flexibility:** Support for both test and production workflows
@@ -263,6 +275,7 @@ ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
 ## Testing Completed
 
 ### Core Functionality ✅
+
 - ✅ Test mode execution works correctly (21/21 records, 100% success)
 - ✅ Production mode execution works correctly (548,542 records, 86.1% success)
 - ✅ Scripts accept command-line arguments properly
@@ -272,6 +285,7 @@ ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
 - ✅ Region name extraction from filenames working
 
 ### Docker Services ✅
+
 - ✅ `merge-orders-test` / `merge-orders-prod` services working
 - ✅ `matrixify-convert-test` / `matrixify-convert-prod` services working
 - ✅ `full-pipeline-test` / `full-pipeline-prod` services working
@@ -279,20 +293,23 @@ ORDERS_FILE=Sales_By_Customer_Auburn_Bay.xlsx
 - ✅ Bind mounts working (scripts, logs, output directories)
 
 ### New Features ✅
+
 - ✅ Header row skipping verified (actual customer data in first row)
 - ✅ Error tracking system tested (no error files created = successful processing)
 - ✅ Auto-detection working when no arguments provided
 - ✅ Region extraction from filenames working correctly
 
 ### Performance Verification ✅
+
 - ✅ **Test Data**: 0.2 seconds total processing time
-- ✅ **Production Data**: ~4-5 minutes for 548k+ records  
+- ✅ **Production Data**: ~4-5 minutes for 548k+ records
 - ✅ **Memory Efficiency**: Chunked processing for large datasets
 - ✅ **Processing Rate**: 6,000+ records/second
 
 ## Ready for Production Use
 
 The pipeline is now ready to handle multiple regional order files with:
+
 - ✅ **Proper header handling** for original data files
 - ✅ **Comprehensive error tracking** for data quality management
 - ✅ **Full Docker integration** with environment variable support
