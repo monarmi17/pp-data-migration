@@ -109,7 +109,7 @@ services:
       sh -c "
         if [ -n \"$$ORDERS_FILE\" ]; then
           echo 'Running with ORDERS_FILE: '$$ORDERS_FILE
-          python merge_orders_products_optimized.py --orders-file $$ORDERS_FILE && python orders_to_matrixify.py
+          python merge_orders_products_optimized.py --orders-file $$ORDERS_FILE && python orders_to_matrixify.py --orders-file $$ORDERS_FILE
         elif [ -n \"$$REGION_NAME\" ]; then
           echo 'Running with REGION_NAME: '$$REGION_NAME
           python merge_orders_products_optimized.py --region $$REGION_NAME && python orders_to_matrixify.py --region $$REGION_NAME

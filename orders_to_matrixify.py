@@ -534,11 +534,23 @@ def validate_output(output_path):
         logger.warning(f"Could not validate output file: {e}")
 
 
+def extract_region_from_filename(filename):
+    """Extract region name from orders filename."""
+    import re
+    # Extract region from filename like "Sales_By_Customer_Beddington.xlsx"
+    match = re.search(r'Sales_By_Customer_([^.]+)', filename)
+    if match:
+        region = match.group(1).lower().replace(' ', '_')
+        return region
+    return None
+
+
 def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Convert order line items to Matrixify CSV format')
     parser.add_argument('--test', action='store_true', help='Run in test mode')
     parser.add_argument('--region', type=str, help='Specific region to process')
+    parser.add_argument('--orders-file', type=str, help='Orders file name to extract region from')
     return parser.parse_args()
 
 
@@ -567,8 +579,23 @@ def main():
     args = parse_arguments()
     
     try:
+        # Determine region name based on arguments
+        region_name = "test"
+        if not args.test:
+            if args.orders_file:
+                # Extract region from orders file name
+                region_name = extract_region_from_filename(args.orders_file)
+                if not region_name:
+                    logger.error(f"Could not extract region from filename: {args.orders_file}")
+                    sys.exit(1)
+            elif args.region:
+                region_name = args.region
+            else:
+                logger.error("For production mode, either --orders-file or --region must be specified")
+                sys.exit(1)
+        
         # Find the appropriate processed orders file
-        orders_path, region_name = find_processed_orders_file(args.test, args.region)
+        orders_path, region_name = find_processed_orders_file(args.test, args.region or region_name)
         
         # Setup logging
         setup_logging(args.test, region_name)
