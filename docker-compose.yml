@@ -1,6 +1,6 @@
 services:
   # Test mode - Service for merging orders with products (Step 1)
-  merge-orders-test:
+  orders-merge-test:
     build:
       context: .
       dockerfile: Dockerfile.merge
@@ -14,7 +14,7 @@ services:
     command: python merge_orders_products_optimized.py --test
 
   # Production mode - Service for merging orders with products (Step 1)
-  merge-orders-prod:
+  orders-merge-prod:
     build:
       context: .
       dockerfile: Dockerfile.merge
@@ -39,8 +39,8 @@ services:
         fi
       "
 
-  # Test mode - Service for converting to Matrixify format (Step 2)
-  matrixify-convert-test:
+  # Test mode - Service for converting orders to Matrixify format (Step 2)
+  orders-matrixify-test:
     build:
       context: .
       dockerfile: Dockerfile.matrixify
@@ -53,8 +53,8 @@ services:
       - PYTHONUNBUFFERED=1
     command: python orders_to_matrixify.py --test
 
-  # Production mode - Service for converting to Matrixify format (Step 2)
-  matrixify-convert-prod:
+  # Production mode - Service for converting orders to Matrixify format (Step 2)
+  orders-matrixify-prod:
     build:
       context: .
       dockerfile: Dockerfile.matrixify
@@ -78,8 +78,8 @@ services:
         fi
       "
 
-  # Test mode - Combined service that runs both steps sequentially
-  full-pipeline-test:
+  # Test mode - Combined orders pipeline service that runs both steps sequentially
+  orders-pipeline-test:
     build:
       context: .
       dockerfile: Dockerfile.pipeline
@@ -93,8 +93,8 @@ services:
       - PYTHONUNBUFFERED=1
     command: sh -c "python merge_orders_products_optimized.py --test && python orders_to_matrixify.py --test"
 
-  # Production mode - Combined service that runs both steps sequentially
-  full-pipeline-prod:
+  # Production mode - Combined orders pipeline service that runs both steps sequentially
+  orders-pipeline-prod:
     build:
       context: .
       dockerfile: Dockerfile.pipeline
@@ -122,7 +122,57 @@ services:
         fi
       "
 
-  # Error Analysis Service - Analyzes failed imports from import-results
+  # Test mode - Service for processing products to Matrixify format
+  products-matrixify-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.products
+    volumes:
+      - ./datasource:/app/datasource
+      - ./matrixify-ready-products:/app/matrixify-ready-products
+      - ./processed:/app/processed
+      - ./error-rows:/app/error-rows
+      - ./logs:/app/logs
+      - ./import-results:/app/import-results
+      - ./error-analysis:/app/error-analysis
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python products_to_matrixify.py --test
+
+  # Production mode - Service for processing products to Matrixify format
+  products-matrixify-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.products
+    volumes:
+      - ./datasource:/app/datasource
+      - ./matrixify-ready-products:/app/matrixify-ready-products
+      - ./processed:/app/processed
+      - ./error-rows:/app/error-rows
+      - ./logs:/app/logs
+      - ./import-results:/app/import-results
+      - ./error-analysis:/app/error-analysis
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python products_to_matrixify.py
+
+  # Service for analyzing import errors only
+  analyze-import-errors:
+    build:
+      context: .
+      dockerfile: Dockerfile.products
+    volumes:
+      - ./import-results:/app/import-results
+      - ./error-analysis:/app/error-analysis
+      - ./logs:/app/logs
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python products_to_matrixify.py --analyze-errors
+
+  # Legacy Error Analysis Service (kept for backward compatibility)
   error-analysis:
     build:
       context: .
@@ -138,4 +188,6 @@ services:
 volumes:
   order_line_items:
   matrixify_orders:
+  matrixify_products:
+  processed_data:
   logs_data:

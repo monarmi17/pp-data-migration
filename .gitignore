@@ -30,3 +30,6 @@ error-analysis/*
 logs/*
 !logs/.gitkeep
 *.log
+
+clean_variant_fixer.py
+analyze_remaining_duplicates.py
