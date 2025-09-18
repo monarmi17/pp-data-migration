@@ -507,12 +507,12 @@ def load_products_data(products_path):
 
 
 def convert_to_matrixify_format(products_df, mode="test"):
-    """Convert products data to Matrixify format."""
+    """Convert products data to Matrixify format with proper variant grouping."""
     try:
-        logger.info("Converting products to Matrixify format...")
+        logger.info("Converting products to Matrixify format with variant grouping...")
         
-        # Create new DataFrame with Matrixify structure
-        matrixify_data = []
+        # First, create individual records with extracted base names and sizes
+        temp_records = []
         
         for _, row in products_df.iterrows():
             # Extract key data from the input row
@@ -528,65 +528,104 @@ def convert_to_matrixify_format(products_df, mode="test"):
             image_url = row.get('Image Url', '')
             weight = row.get('Weight', 0)
             
-            # Create handle from product name (lowercase, replace spaces with hyphens)
-            handle = create_handle_from_name(product_name)
+            # Extract base product name (without size) and size info
+            base_name, size_info = extract_base_name_and_size(product_name)
             
-            # Extract size/variant info from product name or description
-            size_info = extract_size_from_name(product_name)
+            # Create handle from base product name
+            handle = create_handle_from_name(base_name)
             
-            # Create Matrixify record
-            matrixify_record = {
-                'Handle': handle,
-                'Command': 'NEW',
-                'Title': product_name,
-                'Body HTML': clean_html_description(description),
-                'Vendor': vendor or brand or '',
-                'Metafield: custom.categories [single_line_text_field]': category,
-                'Type': 'Pet Supplies',
-                'Tags': '',
-                'Published': 'TRUE',
-                'Option1 Name': 'Size',
-                'Option1 Value': size_info,
-                'Option2 Name': '',
-                'Option2 Value': '',
-                'Option3 Name': '',
-                'Option3 Value': '',
-                'Variant SKU': sku,
-                'Variant Grams': convert_weight_to_grams(weight),
-                'Variant Inventory Tracker': 'shopify',
-                'Variant Inventory Qty': int(stock_qty) if stock_qty else 0,
-                'Variant Inventory Policy': 'deny',
-                'Variant Fulfillment Service': 'manual',
-                'Variant Price': float(price) if price else 0,
-                'Variant Compare At Price': '',
-                'Variant Requires Shipping': 'TRUE',
-                'Variant Taxable': 'TRUE',
-                'Variant Barcode': '',
-                'Image Src': image_url,
-                'Image Position': '1',
-                'Image Alt Text': product_name,
-                'Gift Card': 'FALSE',
-                'SEO Title': product_name,
-                'SEO Description': create_seo_description(product_name, description),
-                'Google Shopping / Google Product Category': '',
-                'Google Shopping / Gender': '',
-                'Google Shopping / Age Group': '',
-                'Google Shopping / MPN': '',
-                'Google Shopping / Condition': 'new',
-                'Google Shopping / Custom Product': 'TRUE',
-                'Variant Image': image_url,
-                'Variant Weight Unit': 'g',
-                'Variant Tax Code': '',
-                'Cost per item': float(cost) if cost else 0,
-                'Status': 'active'
+            # Store record with base name and extracted size
+            temp_record = {
+                'original_name': product_name,
+                'base_name': base_name,
+                'handle': handle,
+                'size': size_info,
+                'sku': sku,
+                'price': float(price) if price else 0,
+                'cost': float(cost) if cost else 0,
+                'stock_qty': int(stock_qty) if stock_qty else 0,
+                'category': category,
+                'vendor': vendor or brand or '',
+                'description': description,
+                'image_url': image_url,
+                'weight': weight
             }
             
-            matrixify_data.append(matrixify_record)
+            temp_records.append(temp_record)
+        
+        # Group records by handle (base product)
+        grouped_products = {}
+        for record in temp_records:
+            handle = record['handle']
+            if handle not in grouped_products:
+                grouped_products[handle] = []
+            grouped_products[handle].append(record)
+        
+        logger.info(f"Grouped {len(temp_records)} individual products into {len(grouped_products)} product groups")
+        
+        # Create Matrixify records with proper variant structure
+        matrixify_data = []
+        
+        for handle, variants in grouped_products.items():
+            # Sort variants by size for consistent ordering
+            variants.sort(key=lambda x: extract_numeric_size(x['size']))
+            
+            for i, variant in enumerate(variants):
+                # Only the first variant gets the full product info, others get blanks
+                is_first_variant = (i == 0)
+                
+                matrixify_record = {
+                    'Handle': handle,
+                    'Command': 'NEW' if is_first_variant else '',
+                    'Title': variant['base_name'] if is_first_variant else '',
+                    'Body HTML': clean_html_description(variant['description']) if is_first_variant else '',
+                    'Vendor': variant['vendor'] if is_first_variant else '',
+                    'Metafield: custom.categories [single_line_text_field]': variant['category'] if is_first_variant else '',
+                    'Type': 'Pet Supplies' if is_first_variant else '',
+                    'Tags': '',
+                    'Published': 'TRUE' if is_first_variant else '',
+                    'Option1 Name': 'Size' if is_first_variant else '',
+                    'Option1 Value': variant['size'],
+                    'Option2 Name': '',
+                    'Option2 Value': '',
+                    'Option3 Name': '',
+                    'Option3 Value': '',
+                    'Variant SKU': variant['sku'],
+                    'Variant Grams': convert_weight_to_grams(variant['weight']),
+                    'Variant Inventory Tracker': 'shopify',
+                    'Variant Inventory Qty': variant['stock_qty'],
+                    'Variant Inventory Policy': 'deny',
+                    'Variant Fulfillment Service': 'manual',
+                    'Variant Price': variant['price'],
+                    'Variant Compare At Price': '',
+                    'Variant Requires Shipping': 'TRUE',
+                    'Variant Taxable': 'TRUE',
+                    'Variant Barcode': '',
+                    'Image Src': variant['image_url'] if is_first_variant else '',
+                    'Image Position': '1' if is_first_variant and variant['image_url'] else '',
+                    'Image Alt Text': variant['base_name'] if is_first_variant and variant['image_url'] else '',
+                    'Gift Card': 'FALSE' if is_first_variant else '',
+                    'SEO Title': variant['base_name'] if is_first_variant else '',
+                    'SEO Description': create_seo_description(variant['base_name'], variant['description']) if is_first_variant else '',
+                    'Google Shopping / Google Product Category': '',
+                    'Google Shopping / Gender': '',
+                    'Google Shopping / Age Group': '',
+                    'Google Shopping / MPN': '',
+                    'Google Shopping / Condition': 'new' if is_first_variant else '',
+                    'Google Shopping / Custom Product': 'TRUE' if is_first_variant else '',
+                    'Variant Image': variant['image_url'],
+                    'Variant Weight Unit': 'g',
+                    'Variant Tax Code': '',
+                    'Cost per item': variant['cost'],
+                    'Status': 'active' if is_first_variant else ''
+                }
+                
+                matrixify_data.append(matrixify_record)
         
         # Create DataFrame
         matrixify_df = pd.DataFrame(matrixify_data)
         
-        logger.info(f"Converted {len(matrixify_df)} records to Matrixify format")
+        logger.info(f"Created {len(matrixify_df)} variant records from {len(grouped_products)} products")
         logger.info(f"Created columns: {list(matrixify_df.columns)}")
         
         return matrixify_df
@@ -594,6 +633,57 @@ def convert_to_matrixify_format(products_df, mode="test"):
     except Exception as e:
         logger.error(f"Error converting to Matrixify format: {e}")
         raise
+
+
+def extract_base_name_and_size(product_name):
+    """Extract base product name and size from full product name."""
+    if not product_name:
+        return 'Unknown Product', 'Standard'
+    
+    # Common size patterns to remove from the product name
+    size_patterns = [
+        r'\s*(\d+(?:\.\d+)?\s*(?:lb|lbs|pound|pounds))\s*$',  # Weight at end: 40lb, 21lb
+        r'\s*(\d+(?:\.\d+)?\s*(?:kg|kgs|kilogram|kilograms))\s*$',  # Weight: 9.7kg
+        r'\s*(\d+(?:\.\d+)?\s*(?:oz|ounces?))\s*$',  # Weight: 16oz
+        r'\s*(\d+(?:\.\d+)?\s*(?:g|grams?))\s*$',  # Weight: 500g
+        r'\s*(\d+\s*(?:pack|count|ct))\s*$',  # Count: 12 pack
+        r'\s*(small|medium|large|xl|xxl)\s*$',  # Size names at end
+    ]
+    
+    extracted_size = 'Standard'
+    base_name = product_name.strip()
+    
+    # Try to extract size from the end of the product name
+    for pattern in size_patterns:
+        match = re.search(pattern, base_name, re.IGNORECASE)
+        if match:
+            extracted_size = match.group(1).strip()
+            # Remove the size from the base name
+            base_name = re.sub(pattern, '', base_name, flags=re.IGNORECASE).strip()
+            break
+    
+    # Clean up the base name
+    base_name = re.sub(r'\s+', ' ', base_name).strip()
+    
+    return base_name, extracted_size
+
+
+def extract_numeric_size(size_str):
+    """Extract numeric value from size string for sorting."""
+    if not size_str:
+        return 0
+    
+    # Extract first number found
+    numbers = re.findall(r'\d+(?:\.\d+)?', str(size_str))
+    if numbers:
+        try:
+            return float(numbers[0])
+        except:
+            pass
+    
+    # Default ordering for non-numeric sizes
+    size_order = {'small': 1, 'medium': 2, 'large': 3, 'xl': 4, 'xxl': 5, 'standard': 10}
+    return size_order.get(str(size_str).lower(), 999)
 
 
 def create_handle_from_name(product_name):
