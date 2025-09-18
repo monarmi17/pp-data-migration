@@ -511,26 +511,169 @@ def convert_to_matrixify_format(products_df, mode="test"):
     try:
         logger.info("Converting products to Matrixify format...")
         
-        # This is a placeholder for the actual conversion logic
-        # You would need to implement the specific conversion based on your product data structure
-        # For now, we'll assume the data is already in a suitable format or needs minimal processing
+        # Create new DataFrame with Matrixify structure
+        matrixify_data = []
         
-        matrixify_df = products_df.copy()
+        for _, row in products_df.iterrows():
+            # Extract key data from the input row
+            product_name = row.get('*Product Name*', '')
+            sku = row.get('SKU', '')
+            price = row.get('*Price*', 0)
+            cost = row.get('Cost', 0)
+            stock_qty = row.get('Stock Quantity', 0)
+            category = row.get('*Category*', '')
+            vendor = row.get('Vendor Name', '')
+            brand = row.get('Brand name', '')
+            description = row.get('Long Description', '')
+            image_url = row.get('Image Url', '')
+            weight = row.get('Weight', 0)
+            
+            # Create handle from product name (lowercase, replace spaces with hyphens)
+            handle = create_handle_from_name(product_name)
+            
+            # Extract size/variant info from product name or description
+            size_info = extract_size_from_name(product_name)
+            
+            # Create Matrixify record
+            matrixify_record = {
+                'Handle': handle,
+                'Command': 'NEW',
+                'Title': product_name,
+                'Body HTML': clean_html_description(description),
+                'Vendor': vendor or brand or '',
+                'Metafield: custom.categories [single_line_text_field]': category,
+                'Type': 'Pet Supplies',
+                'Tags': '',
+                'Published': 'TRUE',
+                'Option1 Name': 'Size',
+                'Option1 Value': size_info,
+                'Option2 Name': '',
+                'Option2 Value': '',
+                'Option3 Name': '',
+                'Option3 Value': '',
+                'Variant SKU': sku,
+                'Variant Grams': convert_weight_to_grams(weight),
+                'Variant Inventory Tracker': 'shopify',
+                'Variant Inventory Qty': int(stock_qty) if stock_qty else 0,
+                'Variant Inventory Policy': 'deny',
+                'Variant Fulfillment Service': 'manual',
+                'Variant Price': float(price) if price else 0,
+                'Variant Compare At Price': '',
+                'Variant Requires Shipping': 'TRUE',
+                'Variant Taxable': 'TRUE',
+                'Variant Barcode': '',
+                'Image Src': image_url,
+                'Image Position': '1',
+                'Image Alt Text': product_name,
+                'Gift Card': 'FALSE',
+                'SEO Title': product_name,
+                'SEO Description': create_seo_description(product_name, description),
+                'Google Shopping / Google Product Category': '',
+                'Google Shopping / Gender': '',
+                'Google Shopping / Age Group': '',
+                'Google Shopping / MPN': '',
+                'Google Shopping / Condition': 'new',
+                'Google Shopping / Custom Product': 'TRUE',
+                'Variant Image': image_url,
+                'Variant Weight Unit': 'g',
+                'Variant Tax Code': '',
+                'Cost per item': float(cost) if cost else 0,
+                'Status': 'active'
+            }
+            
+            matrixify_data.append(matrixify_record)
         
-        # Basic validation and cleanup
-        required_columns = ['Handle', 'Title', 'Variant SKU']
-        missing_columns = [col for col in required_columns if col not in matrixify_df.columns]
-        
-        if missing_columns:
-            logger.warning(f"Missing expected columns: {missing_columns}")
+        # Create DataFrame
+        matrixify_df = pd.DataFrame(matrixify_data)
         
         logger.info(f"Converted {len(matrixify_df)} records to Matrixify format")
+        logger.info(f"Created columns: {list(matrixify_df.columns)}")
         
         return matrixify_df
     
     except Exception as e:
         logger.error(f"Error converting to Matrixify format: {e}")
         raise
+
+
+def create_handle_from_name(product_name):
+    """Create a Shopify handle from product name."""
+    if not product_name:
+        return 'unknown-product'
+    
+    # Convert to lowercase and replace spaces/special chars with hyphens
+    handle = re.sub(r'[^\w\s-]', '', str(product_name).lower())
+    handle = re.sub(r'[-\s]+', '-', handle)
+    handle = handle.strip('-')
+    
+    return handle or 'unknown-product'
+
+
+def extract_size_from_name(product_name):
+    """Extract size information from product name."""
+    if not product_name:
+        return 'Standard'
+    
+    # Look for common size patterns
+    size_patterns = [
+        r'(\d+(?:\.\d+)?\s*(?:lb|lbs|pound|pounds))',  # Weight: 40lb, 21lb
+        r'(\d+(?:\.\d+)?\s*(?:kg|kgs|kilogram|kilograms))',  # Weight: 9.7kg
+        r'(\d+(?:\.\d+)?\s*(?:oz|ounces?))',  # Weight: 16oz
+        r'(\d+(?:\.\d+)?\s*(?:g|grams?))',  # Weight: 500g
+        r'(\d+\s*(?:pack|count|ct))',  # Count: 12 pack
+        r'(small|medium|large|xl|xxl)',  # Size names
+    ]
+    
+    for pattern in size_patterns:
+        match = re.search(pattern, product_name.lower())
+        if match:
+            return match.group(1).strip()
+    
+    return 'Standard'
+
+
+def clean_html_description(description):
+    """Clean and format HTML description for Matrixify."""
+    if not description or pd.isna(description):
+        return ''
+    
+    # Convert to string and clean up
+    desc_str = str(description).strip()
+    
+    # If it's already HTML, return as is
+    if '<' in desc_str and '>' in desc_str:
+        return desc_str
+    
+    # Otherwise, wrap in paragraph tags
+    return f'<p>{desc_str}</p>'
+
+
+def create_seo_description(title, description):
+    """Create SEO description from title and description."""
+    if not title:
+        return ''
+    
+    # Use first part of description or just title
+    if description and not pd.isna(description):
+        desc_text = re.sub(r'<[^>]+>', '', str(description))  # Strip HTML
+        desc_text = desc_text.strip()[:150]  # Limit to 150 chars
+        return f"{title} - {desc_text}..."
+    
+    return title
+
+
+def convert_weight_to_grams(weight):
+    """Convert weight to grams."""
+    if not weight or pd.isna(weight):
+        return 0
+    
+    try:
+        weight_val = float(weight)
+        # Assume weight is in some unit, convert to grams
+        # This is a placeholder - you might need to adjust based on your data
+        return int(weight_val * 1000) if weight_val > 0 else 0
+    except:
+        return 0
 
 
 def save_matrixify_csv(matrixify_df, mode="test", stage="raw"):
