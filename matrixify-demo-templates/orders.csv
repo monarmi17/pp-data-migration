@@ -1,0 +1,22 @@
+Name,Command,Processed At,Customer: Email,Line: Type,Line: SKU,Line: Quantity,Line: Price,Line: Grams,Line: Requires Shipping,Line: Vendor,Transaction: Kind,Transaction: Processed At,Transaction: Amount,Payment: Status,Fulfillment: Status,Fulfillment: Processed At,Fulfillment: Tracking Number,Fulfillment: Shipment Status
+84785001,NEW,3/15/2024 12:52,sarah.johnson@gmail.com,Line Item,40411,1,31.99,0,TRUE,,sale,3/15/2024 12:52,31.99,paid,success,3/15/2024 12:52,,delivered
+84785002,NEW,3/18/2024 14:39,michael.chen@yahoo.com,Line Item,27891,1,82.99,0,TRUE,,sale,3/18/2024 14:39,82.99,paid,success,3/18/2024 14:39,,delivered
+84785003,NEW,3/22/2024 15:26,lisa.rodriguez@hotmail.com,Line Item,27091,2,24.99,0,TRUE,,sale,3/22/2024 15:26,24.99,paid,success,3/22/2024 15:26,,delivered
+84785004,NEW,3/25/2024 13:15,david.wilson@gmail.com,Line Item,26771,1,109.99,0,TRUE,,sale,3/25/2024 13:15,109.99,paid,success,3/25/2024 13:15,,delivered
+84785005,NEW,3/28/2024 17:16,jessica.brown@outlook.com,Line Item,26773,1,33.99,0,TRUE,,sale,3/28/2024 17:16,33.99,paid,success,3/28/2024 17:16,,delivered
+84785006,NEW,2/4/2024 11:35,robert.taylor@gmail.com,Line Item,26775,1,72.99,0,TRUE,,sale,2/4/2024 11:35,72.99,paid,success,2/4/2024 11:35,,delivered
+84785007,NEW,5/4/2024 14:43,amanda.garcia@yahoo.com,Line Item,27890,1,104.99,0,TRUE,,sale,5/4/2024 14:43,104.99,paid,success,5/4/2024 14:43,,delivered
+84785008,NEW,8/4/2024 17:40,kevin.martinez@gmail.com,Line Item,10210627,3,15.99,0,TRUE,,sale,8/4/2024 17:40,15.99,paid,success,8/4/2024 17:40,,delivered
+84785009,NEW,12/4/2024 12:29,jennifer.lee@hotmail.com,Line Item,27893,1,24.99,0,TRUE,,sale,12/4/2024 12:29,24.99,paid,success,12/4/2024 12:29,,delivered
+84785010,NEW,4/15/2024 16:55,christopher.white@outlook.com,Line Item,40411,2,31.99,0,TRUE,,sale,4/15/2024 16:55,31.99,paid,success,4/15/2024 16:55,,delivered
+84785011,NEW,4/18/2024 9:03,michelle.davis@gmail.com,Line Item,27891,1,82.99,0,TRUE,,sale,4/18/2024 9:03,82.99,paid,success,4/18/2024 9:03,,delivered
+84785011,NEW,4/18/2024 9:05,michelle.davis@gmail.com,Line Item,27091,1,24.99,0,TRUE,,sale,4/18/2024 9:05,24.99,paid,success,4/18/2024 9:05,,delivered
+84785012,NEW,4/22/2024 14:05,andrew.thompson@yahoo.com,Line Item,26771,1,109.99,0,TRUE,,sale,4/22/2024 14:05,109.99,paid,success,4/22/2024 14:05,,delivered
+84785012,NEW,4/22/2024 16:30,andrew.thompson@yahoo.com,Line Item,10210627,1,15.99,0,TRUE,,sale,4/22/2024 16:30,15.99,paid,success,4/22/2024 16:30,,delivered
+84785013,NEW,4/25/2024 9:43,patricia.anderson@hotmail.com,Line Item,26773,2,33.99,0,TRUE,,sale,4/25/2024 9:43,33.99,paid,success,4/25/2024 9:43,,delivered
+84785014,NEW,4/28/2024 13:13,thomas.jackson@gmail.com,Line Item,26775,1,72.99,0,TRUE,,sale,4/28/2024 13:13,72.99,paid,success,4/28/2024 13:13,,delivered
+84785014,NEW,4/28/2024 14:58,thomas.jackson@gmail.com,Line Item,27890,1,104.99,0,TRUE,,sale,4/28/2024 14:58,104.99,paid,success,4/28/2024 14:58,,delivered
+84785015,NEW,2/5/2024 16:06,elizabeth.harris@outlook.com,Line Item,27893,2,24.99,0,TRUE,,sale,2/5/2024 16:06,24.99,paid,success,2/5/2024 16:06,,delivered
+84785016,NEW,5/5/2024 17:34,daniel.clark@yahoo.com,Line Item,40411,1,31.99,0,TRUE,,sale,5/5/2024 17:34,31.99,paid,success,5/5/2024 17:34,,delivered
+84785016,NEW,5/5/2024 16:15,daniel.clark@yahoo.com,Line Item,27891,1,82.99,0,TRUE,,sale,5/5/2024 16:15,82.99,paid,success,5/5/2024 16:15,,delivered
+84785016,NEW,5/5/2024 14:35,daniel.clark@yahoo.com,Line Item,27091,1,24.99,0,TRUE,,sale,5/5/2024 14:35,24.99,paid,success,5/5/2024 14:35,,delivered

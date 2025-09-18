@@ -1,4 +1,0 @@
-Name,Command,Processed At,Customer: Email,Line: Type,Line: SKU,Line: Quantity,Line: Price,Line: Grams,Line: Requires Shipping,Line: Vendor,Transaction: Kind,Transaction: Processed At,Transaction: Amount,Payment: Status,Fulfillment: Status,Fulfillment: Processed At,Fulfillment: Tracking Number,Fulfillment: Shipment Status
-84785874,NEW,9/10/2025 2:02,whereverimran@gmail.com,Line Item,064992542115,1,3.99,0,TRUE,,sale,9/10/2025 2:02,3.99,paid,success,9/10/2025 2:02,,delivered
-84785874,NEW,9/10/2025 2:02,whereverimran@gmail.com,Line Item,064992542207,1,8.99,0,TRUE,,sale,9/10/2025 2:02,8.99,paid,success,9/10/2025 2:02,,delivered
-84785874,NEW,9/10/2025 2:02,whereverimran@gmail.com,Line Item,064992542603,1,84.99,0,TRUE,,sale,9/10/2025 2:02,84.99,paid,success,9/10/2025 2:02,,delivered
