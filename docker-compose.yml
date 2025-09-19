@@ -185,6 +185,77 @@ services:
       - PYTHONUNBUFFERED=1
     command: python analyze_import_errors.py
 
+  # Pattern Analysis Services
+  # Service for generating product name pattern examples
+  generate-pattern-examples:
+    build:
+      context: .
+      dockerfile: Dockerfile.pattern-analysis
+    volumes:
+      - ./pattern-analysis:/app/pattern-analysis
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python generate_pattern_examples.py
+
+  # Service for validating pattern examples against actual function
+  validate-pattern-examples:
+    build:
+      context: .
+      dockerfile: Dockerfile.pattern-analysis
+    volumes:
+      - ./pattern-analysis:/app/pattern-analysis
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python validate_pattern_examples.py
+
+  # Service for custom product name testing
+  test-custom-names:
+    build:
+      context: .
+      dockerfile: Dockerfile.pattern-analysis
+    volumes:
+      - ./pattern-analysis:/app/pattern-analysis
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CUSTOM_NAMES=${CUSTOM_NAMES}
+    command: >
+      sh -c "
+        if [ -n \"$$CUSTOM_NAMES\" ]; then
+          echo \"Testing custom names: $$CUSTOM_NAMES\"
+          python validate_pattern_examples.py --custom-names \"$$CUSTOM_NAMES\"
+        else
+          echo 'Usage: docker compose run --rm -e CUSTOM_NAMES=\"Product 1 Product 2\" test-custom-names'
+          echo 'Example: docker compose run --rm -e CUSTOM_NAMES=\"Kong Dog Toy 2-Pack Hills Diet 5 lb\" test-custom-names'
+          echo ''
+          echo 'Note: Separate multiple product names with spaces in a single quoted string'
+          exit 1
+        fi
+      "
+
+  # Complete pattern analysis pipeline (generate + validate)
+  pattern-analysis-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.pattern-analysis
+    volumes:
+      - ./pattern-analysis:/app/pattern-analysis
+      - .:/app:ro # Bind mount scripts for development
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      sh -c "
+        echo '🔍 Starting Pattern Analysis Pipeline...'
+        echo '📋 Step 1: Generating pattern examples...'
+        python generate_pattern_examples.py &&
+        echo '✅ Pattern examples generated successfully!' &&
+        echo '📋 Step 2: Validating examples against actual function...' &&
+        python validate_pattern_examples.py &&
+        echo '🎉 Pattern analysis pipeline completed successfully!'
+      "
+
 volumes:
   order_line_items:
   matrixify_orders:

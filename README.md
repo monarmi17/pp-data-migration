@@ -1,9 +1,29 @@
-# PetPlanet Order Data Migration Pipeline
+# PetPlanet Data Migration Pipeline
 
-This project provides a complete data migration pipeline for PetPlanet orders, supporting multiple regions and optimized for handling large datasets. The pipeline consists of two main steps:
+This project provides a complete data migration pipeline for PetPlanet, supporting both product and order data migration to Shopify. The pipeline handles multiple regions and is optimized for large datasets.
 
-1. **Orders-Products Merger**: Merges orders and products data to add Product Code information
-2. **Matrixify Converter**: Converts processed orders to Matrixify CSV format for Shopify import
+## 🚀 Quick Start
+
+**New to this project?** Check out the **[ONBOARDING.md](ONBOARDING.md)** guide for a 5-minute setup!
+
+```bash
+# Clone and setup
+git clone <repository-url>
+cd pp-data-migration
+
+# Understand product processing
+docker compose run --rm pattern-analysis-pipeline
+
+# Test the complete pipeline
+docker compose run --rm full-pipeline-test
+```
+
+## Main Components
+
+1. **Product Processing**: Converts product data to Shopify-compatible format with variant handling
+2. **Order Processing**: Merges orders with products and converts to Matrixify format
+3. **Pattern Analysis**: Analyzes and validates product name processing patterns
+4. **Error Analysis**: Analyzes failed Shopify imports and provides troubleshooting insights
 
 ## Key Features
 

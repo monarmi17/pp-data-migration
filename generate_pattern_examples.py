@@ -380,8 +380,8 @@ def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Generate product name pattern examples for manual verification')
     parser.add_argument('--output-file', type=str, 
-                        default='product_name_pattern_examples.csv',
-                        help='Output CSV file name (default: product_name_pattern_examples.csv)')
+                        default='pattern-analysis/product_name_pattern_examples.csv',
+                        help='Output CSV file name (default: pattern-analysis/product_name_pattern_examples.csv)')
     return parser.parse_args()
 
 def main():
@@ -405,8 +405,11 @@ def main():
     # Sort by pattern type and original name
     df = df.sort_values(['Pattern_Type', 'Original_Product_Name'])
     
-    # Save to CSV
+    # Ensure output directory exists
     output_path = Path(args.output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Save to CSV
     df.to_csv(output_path, index=False)
     
     # Add timestamp to filename for tracking

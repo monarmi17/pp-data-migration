@@ -26,6 +26,10 @@ error-rows/*
 error-analysis/*
 !error-analysis/.gitkeep
 
+# Pattern analysis directory (ignore contents but keep directory)
+pattern-analysis/*
+!pattern-analysis/.gitkeep
+
 # Log files and directory (ignore contents but keep directory)
 logs/*
 !logs/.gitkeep
