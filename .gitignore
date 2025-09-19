@@ -31,5 +31,13 @@ logs/*
 !logs/.gitkeep
 *.log
 
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# LibreOffice lock files
+*.~lock.*
+
 clean_variant_fixer.py
 analyze_remaining_duplicates.py

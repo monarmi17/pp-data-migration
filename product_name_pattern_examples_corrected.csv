@@ -1,0 +1,76 @@
+Pattern_Type,Original_Product_Name,Base_Name,Handle,Extracted_Variant,Base_Name_Length,Handle_Length,Has_Variant,Variant_Extracted
+Color Variants,Blue Buffalo Purple Bowl,Blue Buffalo Purple Bowl,blue-buffalo-purple-bowl,Blue,24,24,True,True
+Color Variants,FURminator Blue Brush,FURminator Blue Brush,furminator-blue-brush,Blue,21,21,True,True
+Color Variants,Flexi Green Leash,Flexi Green Leash,flexi-green-leash,Green,17,17,True,True
+Color Variants,Hartz Pink Toy,Hartz Pink Toy,hartz-pink-toy,Pink,14,14,True,True
+Color Variants,Hill's Orange Feeder,Hill's Orange Feeder,hills-orange-feeder,Orange,20,19,True,True
+Color Variants,Kong Classic Red Dog Toy,Kong Classic Red Dog Toy,kong-classic-red-dog-toy,Red,24,24,True,True
+Color Variants,Nylabone White Chew,Nylabone White Chew,nylabone-white-chew,White,19,19,True,True
+Color Variants,PetSafe Brown Collar,PetSafe Brown Collar,petsafe-brown-collar,Brown,20,20,True,True
+Color Variants,Petmate Kennel Black,Petmate Kennel Black,petmate-kennel-black,Black,20,20,True,True
+Color Variants,Wellness Gray Treats,Wellness Gray Treats,wellness-gray-treats,Gray,20,20,True,True
+Combined Patterns,Blue Buffalo Large Breed 30 lb 3-Pack,Blue Buffalo Breed,blue-buffalo-breed,3-Pack,18,18,True,True
+Combined Patterns,Hill's Science Diet 5 lb Large Breed,Hill's Science Diet Breed,hills-science-diet-breed,5-Lb,25,24,True,True
+Combined Patterns,Kong Classic Red Small 2-Pack,Kong Classic Red,kong-classic-red,2-Pack,16,16,True,True
+Combined Patterns,Purina Pro Plan Small Bites 6 oz 12 Count,Purina Pro Plan Bites,purina-pro-plan-bites,12-Count,21,21,True,True
+Combined Patterns,Royal Canin Medium Adult 2.5 kg Variety Pack,Royal Canin Adult Variety Pack,royal-canin-adult-variety-pack,2.5-Kg,30,30,True,True
+Combined Patterns,Wellness CORE Large Breed 26 lb Multi-Pack,Wellness CORE Breed Multi-Pack,wellness-core-breed-multi-pack,26-Lb,30,30,True,True
+Complex Real-world,Blue Buffalo Wilderness High Protein Grain Free Natural Adult Large Breed Dry Dog Food Salmon 24 lb,Blue Buffalo Wilderness High Protein Grain Free Natural Adult Breed Dry Dog Food Salmon,blue-buffalo-wilderness-high-protein-grain-free-natural-adult-breed-dry-dog-food-salmon,24-Lb,87,87,True,True
+Complex Real-world,Hill's Prescription Diet c/d Multicare Stress Urinary Care with Chicken 8.5 lb,Hill's Prescription Diet c/d Multicare Stress Urinary Care with Chicken,hills-prescription-diet-cd-multicare-stress-urinary-care-with-chicken,8.5-Lb,71,69,True,True
+Complex Real-world,Kong - Cat Cat Sport Balls 2-Pk Assorted,Kong - Cat Cat Sport Balls Assorted,kong-cat-cat-sport-balls-assorted,2-Pk,35,33,True,True
+Complex Real-world,Purina Pro Plan Focus Adult Small Breed Formula Dry Dog Food 6 lb Bag,Purina Pro Plan Focus Adult Breed Formula Dry Dog Food Bag,purina-pro-plan-focus-adult-breed-formula-dry-dog-food-bag,6-Lb,58,58,True,True
+Complex Real-world,Royal Canin Size Health Nutrition Medium Adult Dry Dog Food 30 lb,Royal Canin Size Health Nutrition Adult Dry Dog Food,royal-canin-size-health-nutrition-adult-dry-dog-food,30-Lb,52,52,True,True
+Complex Real-world,Wellness Complete Health Natural Dry Small Breed Dog Food Turkey & Oatmeal 12 lb,Wellness Complete Health Natural Dry Breed Dog Food Turkey & Oatmeal,wellness-complete-health-natural-dry-breed-dog-food-turkey-oatmeal,12-Lb,68,66,True,True
+Measurement Variants,Carlson Pet Gate 28-inch,Carlson Pet Gate 28-inch,carlson-pet-gate-28-inch,28-Inch,24,24,True,True
+Measurement Variants,Midwest Dog Kennel 42 in,Midwest Dog Kennel 42 in,midwest-dog-kennel-42-in,42-In,24,24,True,True
+Measurement Variants,North States Gate 62 inches,North States Gate 62 inches,north-states-gate-62-inches,62-Inches,27,27,True,True
+Measurement Variants,PetSafe Gate 30 inches,PetSafe Gate 30 inches,petsafe-gate-30-inches,30-Inches,22,22,True,True
+Measurement Variants,Petmate Crate 36 inch,Petmate Crate 36 inch,petmate-crate-36-inch,36-Inch,21,21,True,True
+Measurement Variants,Regalo Baby Gate 49 in,Regalo Baby Gate 49 in,regalo-baby-gate-49-in,49-In,22,22,True,True
+Multi-pack Descriptors,Blue Buffalo Assorted Treats,Blue Buffalo Assorted Treats,blue-buffalo-assorted-treats,Blue,28,28,True,True
+Multi-pack Descriptors,Fancy Feast Variety Pack,Fancy Feast Variety Pack,fancy-feast-variety-pack,Variety,24,24,True,True
+Multi-pack Descriptors,Hill's Multi-Pack Cans,Hill's Multi-Pack Cans,hills-multi-pack-cans,Multi-Pack,22,21,True,True
+Multi-pack Descriptors,Iams Mixed Protein Pack,Iams Mixed Protein Pack,iams-mixed-protein-pack,Mixed,23,23,True,True
+Multi-pack Descriptors,Purina Mixed Flavors,Purina Mixed Flavors,purina-mixed-flavors,Mixed,20,20,True,True
+Multi-pack Descriptors,Wellness Variety Selection,Wellness Variety Selection,wellness-variety-selection,Variety,26,26,True,True
+No Variants,Blue Buffalo Life Protection,Blue Buffalo Life Protection,blue-buffalo-life-protection,Blue,28,28,True,True
+No Variants,Hill's Science Diet,Hill's Science Diet,hills-science-diet,Standard,19,18,False,False
+No Variants,Kong Classic Dog Toy,Kong Classic Dog Toy,kong-classic-dog-toy,Standard,20,20,False,False
+No Variants,Purina Pro Plan,Purina Pro Plan,purina-pro-plan,Standard,15,15,False,False
+No Variants,Royal Canin Adult,Royal Canin Adult,royal-canin-adult,Standard,17,17,False,False
+No Variants,Wellness CORE Natural,Wellness CORE Natural,wellness-core-natural,Standard,21,21,False,False
+Pack/Count Variants,Blue Buffalo Treats 5 Piece Set,Blue Buffalo Treats Set,blue-buffalo-treats-set,5-Piece,23,23,True,True
+Pack/Count Variants,Fancy Feast Cat Food 12 Pcs,Fancy Feast Cat Food,fancy-feast-cat-food,12-Pcs,20,20,True,True
+Pack/Count Variants,Hill's Science Diet Adult 3 Pack,Hill's Science Diet Adult,hills-science-diet-adult,3-Pack,25,24,True,True
+Pack/Count Variants,Iams Adult Dog Food 8 Pieces,Iams Adult Dog Food,iams-adult-dog-food,8-Pieces,19,19,True,True
+Pack/Count Variants,Kong Classic Dog Toy 2-Pack,Kong Classic Dog Toy,kong-classic-dog-toy,2-Pack,20,20,True,True
+Pack/Count Variants,Pedigree Dentastix 28 Count,Pedigree Dentastix,pedigree-dentastix,28-Count,18,18,True,True
+Pack/Count Variants,Purina Pro Plan Treats 6-Pk,Purina Pro Plan Treats,purina-pro-plan-treats,6-Pk,22,22,True,True
+Pack/Count Variants,Royal Canin Kitten Food 12 Packs,Royal Canin Kitten Food,royal-canin-kitten-food,12-Packs,23,23,True,True
+Pack/Count Variants,Wellness Core Wet Food 24-Pk,Wellness Core Wet Food,wellness-core-wet-food,24-Pk,22,22,True,True
+Pack/Count Variants,Whiskas Temptations 6 Ct,Whiskas Temptations,whiskas-temptations,6-Ct,19,19,True,True
+Size Variants,Blue Buffalo Jumbo Bones,Blue Buffalo Jumbo Bones,blue-buffalo-jumbo-bones,Jumbo,24,24,True,True
+Size Variants,FURminator Brush Large,FURminator Brush Large,furminator-brush-large,Large,22,22,True,True
+Size Variants,Flexi Leash Tiny,Flexi Leash Tiny,flexi-leash-tiny,Tiny,16,16,True,True
+Size Variants,Hartz Toy Mini,Hartz Toy Mini,hartz-toy-mini,Mini,14,14,True,True
+Size Variants,Hill's Science Diet X-Large,Hill's Science Diet X-Large,hills-science-diet-x-large,X-Large,27,26,True,True
+Size Variants,Kong Classic Dog Toy Small,Kong Classic Dog Toy Small,kong-classic-dog-toy-small,Small,26,26,True,True
+Size Variants,Nylabone Chew Toy XL,Nylabone Chew Toy XL,nylabone-chew-toy-xl,Xl,20,20,True,True
+Size Variants,PetSafe Collar XXL,PetSafe Collar XXL,petsafe-collar-xxl,Xxl,18,18,True,True
+Size Variants,Petmate Kennel Medium Size,Petmate Kennel Medium Size,petmate-kennel-medium-size,Medium,26,26,True,True
+Size Variants,Wellness Treats Giant,Wellness Treats Giant,wellness-treats-giant,Giant,21,21,True,True
+Specific Product Variants,Midwest 5-Level Tower,Midwest 5-Level Tower,midwest-5-level-tower,5-Level,21,21,True,True
+Specific Product Variants,North States 6-Way Gate,North States 6-Way Gate,north-states-6-way-gate,6-Way,23,23,True,True
+Specific Product Variants,PetSafe 3-Way Dog Door,PetSafe 3-Way Dog Door,petsafe-3-way-dog-door,3-Way,22,22,True,True
+Specific Product Variants,Petmate 2-Speed Fan,Petmate 2-Speed Fan,petmate-2-speed-fan,2-Speed,19,19,True,True
+Specific Product Variants,SureFlap 4-Way Cat Flap,SureFlap 4-Way Cat Flap,sureflap-4-way-cat-flap,4-Way,23,23,True,True
+Weight Variants,Blue Buffalo Life Protection 30 lb,Blue Buffalo Life Protection,blue-buffalo-life-protection,30-Lb,28,28,True,True
+Weight Variants,Fancy Feast Grilled 3 ounces,Fancy Feast Grilled,fancy-feast-grilled,3-Ounces,19,19,True,True
+Weight Variants,Friskies Pate 5.5 oz,Friskies Pate,friskies-pate,5.5-Oz,13,13,True,True
+Weight Variants,Hills Prescription Diet 5 lb Bag,Hills Prescription Diet Bag,hills-prescription-diet-bag,5-Lb,27,27,True,True
+Weight Variants,Iams ProActive Health 15 pounds,Iams ProActive Health,iams-proactive-health,15-Pounds,21,21,True,True
+Weight Variants,Nutro Ultra Adult 12 oz Can,Nutro Ultra Adult Can,nutro-ultra-adult-can,12-Oz,21,21,True,True
+Weight Variants,Purina ONE SmartBlend 16.5 lbs,Purina ONE SmartBlend,purina-one-smartblend,16.5-Lbs,21,21,True,True
+Weight Variants,Royal Canin Medium Adult 2.5 kg,Royal Canin Adult,royal-canin-adult,2.5-Kg,17,17,True,True
+Weight Variants,Science Diet Small Bites 3.5 pound,Science Diet Bites,science-diet-bites,3.5-Pound,18,18,True,True
+Weight Variants,Wellness CORE Natural 4 kg,Wellness CORE Natural,wellness-core-natural,4-Kg,21,21,True,True
