@@ -111,7 +111,7 @@ def validate_examples(input_file, output_corrected_file):
         
         # Save mismatches for review
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        mismatches_path = Path(f"pattern-analysis/pattern_validation_mismatches_{timestamp}.csv")
+        mismatches_path = Path(f"product-name-pattern-analysis/pattern_validation_mismatches_{timestamp}.csv")
         mismatches_path.parent.mkdir(parents=True, exist_ok=True)
         mismatches_df.to_csv(mismatches_path, index=False)
         print(f"📁 Mismatches saved to: {mismatches_path}")
@@ -176,7 +176,7 @@ def validate_custom_names(product_names):
     
     # Save results
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    output_path = Path(f"pattern-analysis/custom_product_names_validation_{timestamp}.csv")
+    output_path = Path(f"product-name-pattern-analysis/custom_product_names_validation_{timestamp}.csv")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     results_df.to_csv(output_path, index=False)
     
@@ -199,11 +199,11 @@ def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Validate product name pattern examples against actual function')
     parser.add_argument('--input-file', type=str, 
-                        default='pattern-analysis/product_name_pattern_examples.csv',
-                        help='Input CSV file to validate (default: pattern-analysis/product_name_pattern_examples.csv)')
+                        default='product-name-pattern-analysis/product_name_pattern_examples.csv',
+                        help='Input CSV file to validate (default: product-name-pattern-analysis/product_name_pattern_examples.csv)')
     parser.add_argument('--output-corrected', type=str,
-                        default='pattern-analysis/product_name_pattern_examples_corrected.csv',
-                        help='Output file for corrected examples (default: pattern-analysis/product_name_pattern_examples_corrected.csv)')
+                        default='product-name-pattern-analysis/product_name_pattern_examples_corrected.csv',
+                        help='Output file for corrected examples (default: product-name-pattern-analysis/product_name_pattern_examples_corrected.csv)')
     parser.add_argument('--custom-names', type=str, nargs='+',
                         help='Validate custom product names (space-separated)')
     return parser.parse_args()

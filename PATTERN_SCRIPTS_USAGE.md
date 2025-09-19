@@ -1,14 +1,14 @@
-# Pattern Analysis Scripts Usage Guide
+# Product Name Pattern Analysis Scripts Usage Guide
 
-This guide explains how to use the pattern analysis scripts to generate and validate product name pattern examples. The scripts can be run both directly with Python and through Docker Compose services for easy onboarding.
+This guide explains how to use the product name pattern analysis scripts to generate and validate product name pattern examples. The scripts can be run both directly with Python and through Docker Compose services.
 
 ## Scripts Overview
 
-### 1. `generate_pattern_examples.py`
+### 1. `generate_product_name_pattern_examples.py`
 
 Generates comprehensive examples of all product name patterns that the `products_to_matrixify.py` script can process.
 
-### 2. `validate_pattern_examples.py`
+### 2. `validate_product_name_pattern_examples.py`
 
 Validates generated examples against the actual function to ensure accuracy.
 
@@ -23,14 +23,14 @@ Validates generated examples against the actual function to ensure accuracy.
 
 ```bash
 # Complete pipeline (generate + validate)
-docker compose run --rm pattern-analysis-pipeline
+docker compose run --rm product-name-pattern-analysis-pipeline
 ```
 
 This will:
 
 1. Generate 75+ pattern examples
 2. Validate them against the actual function
-3. Save results to `pattern-analysis/` directory
+3. Save results to `product-name-pattern-analysis/` directory
 
 ## Docker Usage (Individual Services)
 
@@ -38,30 +38,30 @@ This will:
 
 ```bash
 # Generate examples using Docker
-docker compose run --rm generate-pattern-examples
+docker compose run --rm generate-product-name-pattern-examples
 
 # Generate with custom filename
-docker compose run --rm generate-pattern-examples python generate_pattern_examples.py --output-file pattern-analysis/custom_patterns.csv
+docker compose run --rm generate-product-name-pattern-examples python generate_product_name_pattern_examples.py --output-file product-name-pattern-analysis/custom_patterns.csv
 ```
 
 ### Validate Examples
 
 ```bash
 # Validate generated examples
-docker compose run --rm validate-pattern-examples
+docker compose run --rm validate-product-name-pattern-examples
 
 # Validate custom file
-docker compose run --rm validate-pattern-examples python validate_pattern_examples.py --input-file pattern-analysis/custom_patterns.csv
+docker compose run --rm validate-product-name-pattern-examples python validate_product_name_pattern_examples.py --input-file product-name-pattern-analysis/custom_patterns.csv
 ```
 
 ### Test Custom Product Names
 
 ```bash
 # Test specific product names
-docker compose run --rm -e CUSTOM_NAMES="Kong Dog Toy 2-Pack Hills Diet 5 lb Blue Buffalo Large" test-custom-names
+docker compose run --rm -e CUSTOM_NAMES="Kong Dog Toy 2-Pack Hills Diet 5 lb Blue Buffalo Large" test-custom-product-names
 
 # Alternative syntax
-CUSTOM_NAMES="Kong Dog Toy 2-Pack Hills Diet 5 lb" docker compose run --rm test-custom-names
+CUSTOM_NAMES="Kong Dog Toy 2-Pack Hills Diet 5 lb" docker compose run --rm test-custom-product-names
 ```
 
 ## Direct Python Usage (Advanced)
@@ -76,11 +76,11 @@ pip install -r requirements.txt
 ### Generate Pattern Examples
 
 ```bash
-# Generate examples with default filename (pattern-analysis/product_name_pattern_examples.csv)
-python3 generate_pattern_examples.py
+# Generate examples with default filename (product-name-pattern-analysis/product_name_pattern_examples.csv)
+python3 generate_product_name_pattern_examples.py
 
 # Generate with custom output filename
-python3 generate_pattern_examples.py --output-file pattern-analysis/my_patterns.csv
+python3 generate_product_name_pattern_examples.py --output-file product-name-pattern-analysis/my_patterns.csv
 ```
 
 **Output**: Creates a CSV file with 75+ examples across 10 pattern types.

@@ -185,38 +185,38 @@ services:
       - PYTHONUNBUFFERED=1
     command: python analyze_import_errors.py
 
-  # Pattern Analysis Services
+  # Product Name Pattern Analysis Services
   # Service for generating product name pattern examples
-  generate-pattern-examples:
+  generate-product-name-pattern-examples:
     build:
       context: .
-      dockerfile: Dockerfile.pattern-analysis
+      dockerfile: Dockerfile.product-name-pattern-analysis
     volumes:
-      - ./pattern-analysis:/app/pattern-analysis
+      - ./product-name-pattern-analysis:/app/product-name-pattern-analysis
       - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
-    command: python generate_pattern_examples.py
+    command: python generate_product_name_pattern_examples.py
 
-  # Service for validating pattern examples against actual function
-  validate-pattern-examples:
+  # Service for validating product name pattern examples against actual function
+  validate-product-name-pattern-examples:
     build:
       context: .
-      dockerfile: Dockerfile.pattern-analysis
+      dockerfile: Dockerfile.product-name-pattern-analysis
     volumes:
-      - ./pattern-analysis:/app/pattern-analysis
+      - ./product-name-pattern-analysis:/app/product-name-pattern-analysis
       - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
-    command: python validate_pattern_examples.py
+    command: python validate_product_name_pattern_examples.py
 
   # Service for custom product name testing
-  test-custom-names:
+  test-custom-product-names:
     build:
       context: .
-      dockerfile: Dockerfile.pattern-analysis
+      dockerfile: Dockerfile.product-name-pattern-analysis
     volumes:
-      - ./pattern-analysis:/app/pattern-analysis
+      - ./product-name-pattern-analysis:/app/product-name-pattern-analysis
       - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
@@ -224,36 +224,36 @@ services:
     command: >
       sh -c "
         if [ -n \"$$CUSTOM_NAMES\" ]; then
-          echo \"Testing custom names: $$CUSTOM_NAMES\"
-          python validate_pattern_examples.py --custom-names \"$$CUSTOM_NAMES\"
+          echo \"Testing custom product names: $$CUSTOM_NAMES\"
+          python validate_product_name_pattern_examples.py --custom-names \"$$CUSTOM_NAMES\"
         else
-          echo 'Usage: docker compose run --rm -e CUSTOM_NAMES=\"Product 1 Product 2\" test-custom-names'
-          echo 'Example: docker compose run --rm -e CUSTOM_NAMES=\"Kong Dog Toy 2-Pack Hills Diet 5 lb\" test-custom-names'
+          echo 'Usage: docker compose run --rm -e CUSTOM_NAMES=\"Product 1 Product 2\" test-custom-product-names'
+          echo 'Example: docker compose run --rm -e CUSTOM_NAMES=\"Kong Dog Toy 2-Pack Hills Diet 5 lb\" test-custom-product-names'
           echo ''
           echo 'Note: Separate multiple product names with spaces in a single quoted string'
           exit 1
         fi
       "
 
-  # Complete pattern analysis pipeline (generate + validate)
-  pattern-analysis-pipeline:
+  # Complete product name pattern analysis pipeline (generate + validate)
+  product-name-pattern-analysis-pipeline:
     build:
       context: .
-      dockerfile: Dockerfile.pattern-analysis
+      dockerfile: Dockerfile.product-name-pattern-analysis
     volumes:
-      - ./pattern-analysis:/app/pattern-analysis
+      - ./product-name-pattern-analysis:/app/product-name-pattern-analysis
       - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
     command: >
       sh -c "
-        echo '🔍 Starting Pattern Analysis Pipeline...'
-        echo '📋 Step 1: Generating pattern examples...'
-        python generate_pattern_examples.py &&
-        echo '✅ Pattern examples generated successfully!' &&
+        echo '🔍 Starting Product Name Pattern Analysis Pipeline...'
+        echo '📋 Step 1: Generating product name pattern examples...'
+        python generate_product_name_pattern_examples.py &&
+        echo '✅ Product name pattern examples generated successfully!' &&
         echo '📋 Step 2: Validating examples against actual function...' &&
-        python validate_pattern_examples.py &&
-        echo '🎉 Pattern analysis pipeline completed successfully!'
+        python validate_product_name_pattern_examples.py &&
+        echo '🎉 Product name pattern analysis pipeline completed successfully!'
       "
 
 volumes:

@@ -380,8 +380,8 @@ def parse_arguments():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Generate product name pattern examples for manual verification')
     parser.add_argument('--output-file', type=str, 
-                        default='pattern-analysis/product_name_pattern_examples.csv',
-                        help='Output CSV file name (default: pattern-analysis/product_name_pattern_examples.csv)')
+                        default='product-name-pattern-analysis/product_name_pattern_examples.csv',
+                        help='Output CSV file name (default: product-name-pattern-analysis/product_name_pattern_examples.csv)')
     return parser.parse_args()
 
 def main():

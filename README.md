@@ -11,9 +11,6 @@ This project provides a complete data migration pipeline for PetPlanet, supporti
 git clone <repository-url>
 cd pp-data-migration
 
-# Understand product processing
-docker compose run --rm pattern-analysis-pipeline
-
 # Test the complete pipeline
 docker compose run --rm full-pipeline-test
 ```
@@ -22,8 +19,7 @@ docker compose run --rm full-pipeline-test
 
 1. **Product Processing**: Converts product data to Shopify-compatible format with variant handling
 2. **Order Processing**: Merges orders with products and converts to Matrixify format
-3. **Pattern Analysis**: Analyzes and validates product name processing patterns
-4. **Error Analysis**: Analyzes failed Shopify imports and provides troubleshooting insights
+3. **Error Analysis**: Analyzes failed Shopify imports and provides troubleshooting insights
 
 ## Key Features
 
