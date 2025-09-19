@@ -89,10 +89,10 @@ python3 generate_product_name_pattern_examples.py --output-file product-name-pat
 
 ```bash
 # Validate default file
-python3 validate_pattern_examples.py
+python3 validate_product_name_pattern_examples.py
 
 # Validate custom file
-python3 validate_pattern_examples.py --input-file pattern-analysis/my_patterns.csv --output-corrected pattern-analysis/my_corrected.csv
+python3 validate_product_name_pattern_examples.py --input-file product-name-pattern-analysis/my_patterns.csv --output-corrected product-name-pattern-analysis/my_corrected.csv
 ```
 
 **Output**:
@@ -105,7 +105,7 @@ python3 validate_pattern_examples.py --input-file pattern-analysis/my_patterns.c
 
 ```bash
 # Test specific product names
-python3 validate_pattern_examples.py --custom-names "Kong Dog Toy 2-Pack" "Hill's Diet 5 lb" "Blue Buffalo Large"
+python3 validate_product_name_pattern_examples.py --custom-names "Kong Dog Toy 2-Pack" "Hill's Diet 5 lb" "Blue Buffalo Large"
 ```
 
 **Output**: CSV file with validation results for your custom names.
@@ -124,17 +124,17 @@ python3 validate_pattern_examples.py --custom-names "Kong Dog Toy 2-Pack" "Hill'
 2. **Run Pattern Analysis** (Docker - No Python setup needed):
 
    ```bash
-   docker compose run --rm pattern-analysis-pipeline
+   docker compose run --rm product-name-pattern-analysis-pipeline
    ```
 
 3. **Review Results**:
 
-   - Check `pattern-analysis/product_name_pattern_examples_corrected.csv`
+   - Check `product-name-pattern-analysis/product_name_pattern_examples_corrected.csv`
    - Review the validation statistics in the console output
 
 4. **Test Your Own Product Names**:
    ```bash
-   docker compose run --rm -e CUSTOM_NAMES="Your Product Name 2-Pack Another Product 5 lb" test-custom-names
+   docker compose run --rm -e CUSTOM_NAMES="Your Product Name 2-Pack Another Product 5 lb" test-custom-product-names
    ```
 
 ### For Development
@@ -149,8 +149,8 @@ python3 validate_pattern_examples.py --custom-names "Kong Dog Toy 2-Pack" "Hill'
 
 2. **Run Scripts Directly**:
    ```bash
-   python3 generate_pattern_examples.py
-   python3 validate_pattern_examples.py
+   python3 generate_product_name_pattern_examples.py
+   python3 validate_product_name_pattern_examples.py
    ```
 
 ## Output Structure
@@ -159,14 +159,14 @@ python3 validate_pattern_examples.py --custom-names "Kong Dog Toy 2-Pack" "Hill'
 
 ```
 pp-data-migration/
-├── pattern-analysis/              # All pattern analysis outputs (gitignored)
+├── product-name-pattern-analysis/              # All pattern analysis outputs (gitignored)
 │   ├── product_name_pattern_examples.csv
 │   ├── product_name_pattern_examples_corrected.csv
 │   ├── pattern_validation_mismatches_YYYYMMDD_HHMMSS.csv (if any)
 │   └── custom_product_names_validation_YYYYMMDD_HHMMSS.csv
-├── generate_pattern_examples.py   # Pattern generator script
-├── validate_pattern_examples.py   # Validation script
-└── Dockerfile.pattern-analysis    # Docker image for pattern scripts
+├── generate_product_name_pattern_examples.py   # Pattern generator script
+├── validate_product_name_pattern_examples.py   # Validation script
+└── Dockerfile.product-name-pattern-analysis    # Docker image for pattern scripts
 ```
 
 ### Generated Files
@@ -198,12 +198,12 @@ Pack/Count Variants,Kong Classic Dog Toy 2-Pack,Kong Classic Dog Toy,kong-classi
 
 ## Docker Services Reference
 
-| Service                     | Purpose                   | Usage                                                             |
-| --------------------------- | ------------------------- | ----------------------------------------------------------------- |
-| `pattern-analysis-pipeline` | Complete pipeline         | `docker compose run --rm pattern-analysis-pipeline`               |
-| `generate-pattern-examples` | Generate examples only    | `docker compose run --rm generate-pattern-examples`               |
-| `validate-pattern-examples` | Validate examples only    | `docker compose run --rm validate-pattern-examples`               |
-| `test-custom-names`         | Test custom product names | `docker compose run --rm -e CUSTOM_NAMES="..." test-custom-names` |
+| Service                                  | Purpose                   | Usage                                                                     |
+| ---------------------------------------- | ------------------------- | ------------------------------------------------------------------------- |
+| `product-name-pattern-analysis-pipeline` | Complete pipeline         | `docker compose run --rm product-name-pattern-analysis-pipeline`          |
+| `generate-product-name-pattern-examples` | Generate examples only    | `docker compose run --rm generate-product-name-pattern-examples`          |
+| `validate-product-name-pattern-examples` | Validate examples only    | `docker compose run --rm validate-product-name-pattern-examples`          |
+| `test-custom-product-names`              | Test custom product names | `docker compose run --rm -e CUSTOM_NAMES="..." test-custom-product-names` |
 
 ## Understanding the Results
 
@@ -228,10 +228,10 @@ Pack/Count Variants,Kong Classic Dog Toy 2-Pack,Kong Classic Dog Toy,kong-classi
 
 ```bash
 # Rebuild images if needed
-docker compose build pattern-analysis-pipeline
+docker compose build product-name-pattern-analysis-pipeline
 
 # Check container logs
-docker compose logs generate-pattern-examples
+docker compose logs generate-product-name-pattern-examples
 ```
 
 ### Import Errors (Python Direct Usage)
@@ -241,7 +241,7 @@ If you get import errors:
 ```bash
 # Make sure you're in the correct directory
 cd /path/to/pp-data-migration
-python3 validate_pattern_examples.py
+python3 validate_product_name_pattern_examples.py
 ```
 
 ### File Not Found
@@ -250,22 +250,22 @@ If CSV file not found:
 
 ```bash
 # Generate examples first
-docker compose run --rm generate-pattern-examples
+docker compose run --rm generate-product-name-pattern-examples
 # Then validate
-docker compose run --rm validate-pattern-examples
+docker compose run --rm validate-product-name-pattern-examples
 ```
 
 ### Custom Testing Examples
 
 ```bash
 # Test pack variants
-docker compose run --rm -e CUSTOM_NAMES="Product 2-Pack Item 5-Pk Food 12 Count" test-custom-names
+docker compose run --rm -e CUSTOM_NAMES="Product 2-Pack Item 5-Pk Food 12 Count" test-custom-product-names
 
 # Test weight variants
-docker compose run --rm -e CUSTOM_NAMES="Dog Food 5 lb Cat Treats 2.5 kg Bird Seed 8 oz" test-custom-names
+docker compose run --rm -e CUSTOM_NAMES="Dog Food 5 lb Cat Treats 2.5 kg Bird Seed 8 oz" test-custom-product-names
 
 # Test combined patterns
-docker compose run --rm -e CUSTOM_NAMES="Premium Dog Food Large Breed 30 lb 2-Pack" test-custom-names
+docker compose run --rm -e CUSTOM_NAMES="Premium Dog Food Large Breed 30 lb 2-Pack" test-custom-product-names
 ```
 
 ## Integration with Main Pipeline
@@ -286,20 +286,20 @@ The generated examples serve as a reference for manual verification of your actu
 
 ```yaml
 - name: Run Pattern Analysis
-  run: docker compose run --rm pattern-analysis-pipeline
+  run: docker compose run --rm product-name-pattern-analysis-pipeline
 
 - name: Upload Pattern Analysis Results
   uses: actions/upload-artifact@v3
   with:
     name: pattern-analysis-results
-    path: pattern-analysis/
+    path: product-name-pattern-analysis/
 ```
 
 ### Automated Testing
 
 ```bash
 # Run as part of your test suite
-docker compose run --rm pattern-analysis-pipeline
+docker compose run --rm product-name-pattern-analysis-pipeline
 if [ $? -eq 0 ]; then
   echo "✅ Pattern analysis passed"
 else
