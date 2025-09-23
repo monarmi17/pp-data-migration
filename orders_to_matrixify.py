@@ -16,7 +16,8 @@ Column Mapping:
 - Processed At -> Generated timestamp based on Date
 - Customer: Email -> Email (validated, blank if invalid)
 - Line: Type -> Always 'Line Item'
-- Line: SKU -> Product Code
+- Line: SKU -> Product Code (empty if not available)
+- Line: Variant Barcode -> Product (original product identifier)
 - Line: Quantity -> Product quantity (minimum 1)
 - Line: Price -> Price ($)
 - Line: Grams -> Always 0 (as per template)
@@ -168,7 +169,7 @@ def get_orders_info(orders_path):
         
         # Check for required columns
         required_columns = [
-            'Ticket number', 'Date', 'Email', 'Product Code', 
+            'Ticket number', 'Date', 'Email', 'Product', 
             'Product quantity', 'Price ($)'
         ]
         
@@ -249,24 +250,12 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
         for chunk_df in pd.read_csv(temp_csv_path, chunksize=CHUNK_SIZE):
             chunk_num += 1
             
-            # Filter out rows where Product Code is NaN (unmapped products)
+            # No longer filtering out rows based on Product Code
+            # All rows will be processed regardless of Product Code availability
             initial_count = len(chunk_df)
-            missing_product_code_mask = chunk_df['Product Code'].isna()
+            filtered_count = initial_count
             
-            # Track rows with missing Product Code
-            if missing_product_code_mask.any():
-                missing_rows = chunk_df[missing_product_code_mask].copy()
-                missing_rows['Error_Reason'] = 'Missing Product Code - should have been filtered in merge step'
-                missing_rows['Chunk_Number'] = chunk_num
-                all_error_rows.append(missing_rows)
-            
-            chunk_df = chunk_df.dropna(subset=['Product Code'])
-            filtered_count = len(chunk_df)
-            
-            if filtered_count < initial_count:
-                unmapped_count = initial_count - filtered_count
-                total_unmapped += unmapped_count
-                logger.warning(f"Chunk {chunk_num}/{total_chunks}: Filtered out {unmapped_count} rows with missing Product Code")
+            logger.info(f"Chunk {chunk_num}/{total_chunks}: Processing {initial_count} rows")
             
             # Process the chunk
             matrixify_data = []
@@ -289,13 +278,24 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                 if pd.isna(ticket_number):
                     ticket_number = 0  # Default value for missing ticket numbers
                 
+                # Handle Product Code - use empty string if NaN
+                product_code = ''
+                if 'Product Code' in row and pd.notna(row['Product Code']):
+                    product_code = str(row['Product Code']).strip()
+                
+                # Handle Product (Variant Barcode) - convert to string, handle NaN
+                variant_barcode = ''
+                if pd.notna(row['Product']):
+                    variant_barcode = str(row['Product']).strip()
+                
                 matrixify_row = {
                     'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                     'Command': 'NEW',
                     'Processed At': processed_at,
                     'Customer: Email': customer_email,
                     'Line: Type': 'Line Item',
-                    'Line: SKU': str(row['Product Code']).strip(),  # Keep as string, don't force to int
+                    'Line: SKU': product_code,  # Product Code or empty if not available
+                    'Line: Variant Barcode': variant_barcode,  # Original Product value
                     'Line: Quantity': quantity,
                     'Line: Price': float(row['Price ($)']),
                     'Line: Grams': 0,
@@ -394,20 +394,12 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
         # Track error rows
         error_rows = []
         
-        # Filter out rows where Product Code is NaN (unmapped products)
+        # No longer filtering out rows based on Product Code
+        # All rows will be processed regardless of Product Code availability
         initial_count = len(orders_df)
-        missing_product_code_mask = orders_df['Product Code'].isna()
+        filtered_count = initial_count
         
-        if missing_product_code_mask.any():
-            missing_rows = orders_df[missing_product_code_mask].copy()
-            missing_rows['Error_Reason'] = 'Missing Product Code - should have been filtered in merge step'
-            error_rows.append(missing_rows)
-        
-        orders_df = orders_df.dropna(subset=['Product Code'])
-        filtered_count = len(orders_df)
-        
-        if filtered_count < initial_count:
-            logger.warning(f"Filtered out {initial_count - filtered_count} rows with missing Product Code")
+        logger.info(f"Processing all {initial_count} rows (no filtering based on Product Code)")
         
         # Create the Matrixify DataFrame
         matrixify_data = []
@@ -432,13 +424,24 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
             if pd.isna(ticket_number):
                 ticket_number = 0  # Default value for missing ticket numbers
             
+            # Handle Product Code - use empty string if NaN
+            product_code = ''
+            if 'Product Code' in row and pd.notna(row['Product Code']):
+                product_code = str(row['Product Code']).strip()
+            
+            # Handle Product (Variant Barcode) - convert to string, handle NaN
+            variant_barcode = ''
+            if pd.notna(row['Product']):
+                variant_barcode = str(row['Product']).strip()
+            
             matrixify_row = {
                 'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                 'Command': 'NEW',
                 'Processed At': processed_at,
                 'Customer: Email': customer_email,
                 'Line: Type': 'Line Item',
-                'Line: SKU': str(row['Product Code']).strip(),  # Keep as string, don't force to int
+                'Line: SKU': product_code,  # Product Code or empty if not available
+                'Line: Variant Barcode': variant_barcode,  # Original Product value
                 'Line: Quantity': quantity,
                 'Line: Price': float(row['Price ($)']),
                 'Line: Grams': 0,
@@ -528,7 +531,7 @@ def validate_output(output_path):
         # Check for expected columns from template
         expected_columns = [
             'Name', 'Command', 'Processed At', 'Customer: Email',
-            'Line: Type', 'Line: SKU', 'Line: Quantity', 'Line: Price',
+            'Line: Type', 'Line: SKU', 'Line: Variant Barcode', 'Line: Quantity', 'Line: Price',
             'Line: Grams', 'Line: Requires Shipping', 'Line: Vendor',
             'Transaction: Kind', 'Transaction: Processed At', 'Transaction: Amount',
             'Payment: Status', 'Fulfillment: Status', 'Fulfillment: Processed At',
