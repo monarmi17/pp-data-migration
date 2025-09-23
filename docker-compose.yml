@@ -7,6 +7,7 @@ services:
     volumes:
       - ./datasource:/app/datasource
       - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
+      - ./error-rows:/app/error-rows
       - ./logs:/app/logs
       - .:/app:ro # Bind mount scripts for development
     environment:
@@ -21,6 +22,7 @@ services:
     volumes:
       - ./datasource:/app/datasource
       - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
+      - ./error-rows:/app/error-rows
       - ./logs:/app/logs
       - .:/app:ro # Bind mount scripts for development
     environment:
@@ -47,6 +49,7 @@ services:
     volumes:
       - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
       - ./matrixify-ready-orders:/app/matrixify-ready-orders
+      - ./error-rows:/app/error-rows
       - ./logs:/app/logs
       - .:/app:ro # Bind mount scripts for development
     environment:
@@ -61,6 +64,7 @@ services:
     volumes:
       - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
       - ./matrixify-ready-orders:/app/matrixify-ready-orders
+      - ./error-rows:/app/error-rows
       - ./logs:/app/logs
       - .:/app:ro # Bind mount scripts for development
     environment:
@@ -87,6 +91,7 @@ services:
       - ./datasource:/app/datasource
       - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
       - ./matrixify-ready-orders:/app/matrixify-ready-orders
+      - ./error-rows:/app/error-rows
       - ./logs:/app/logs
       - .:/app:ro # Bind mount scripts for development
     environment:
@@ -102,6 +107,7 @@ services:
       - ./datasource:/app/datasource
       - ./order-line-items-with-product-codes:/app/order-line-items-with-product-codes
       - ./matrixify-ready-orders:/app/matrixify-ready-orders
+      - ./error-rows:/app/error-rows
       - ./logs:/app/logs
       - .:/app:ro # Bind mount scripts for development
     environment:

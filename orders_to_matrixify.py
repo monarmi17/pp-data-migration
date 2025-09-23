@@ -588,11 +588,11 @@ def save_error_rows(error_rows_list, region_name, step_name):
         
         # Create timestamped filename following naming convention
         timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S")
-        error_filename = f"{region_name}_{step_name}_error_rows_{timestamp}.xlsx"
+        error_filename = f"{region_name}_{step_name}_error_rows_{timestamp}.csv"
         error_path = error_dir / error_filename
         
-        # Save error rows to Excel file
-        all_error_rows.to_excel(error_path, index=False, engine='openpyxl')
+        # Save error rows to CSV file
+        all_error_rows.to_csv(error_path, index=False)
         
         logger.info(f"Saved {len(all_error_rows):,} error/ignored rows to: {error_path}")
         
