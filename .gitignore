@@ -30,6 +30,10 @@ error-analysis/*
 product-name-pattern-analysis/*
 !product-name-pattern-analysis/.gitkeep
 
+# Original data directory (ignore contents but keep directory)
+datasource/original-data/*
+!datasource/original-data/.gitkeep
+
 # Log files and directory (ignore contents but keep directory)
 logs/*
 !logs/.gitkeep
