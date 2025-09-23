@@ -54,14 +54,69 @@ logger = logging.getLogger(__name__)
 
 def is_valid_email(email):
     """
-    Check if the email is valid using basic regex pattern.
+    Check if the email is valid using Shopify-compatible validation.
     Returns True if valid, False otherwise.
+    
+    Shopify email requirements:
+    - Cannot start or end with a dot
+    - Cannot have consecutive dots
+    - Must have valid local and domain parts
+    - Domain must have at least one dot and valid TLD
     """
     if pd.isna(email) or email == '' or str(email).strip() == '' or str(email).lower() == 'nan':
         return False
     
-    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(email_pattern, str(email).strip()))
+    email_str = str(email).strip()
+    
+    # Basic format check
+    if '@' not in email_str or email_str.count('@') != 1:
+        return False
+    
+    local_part, domain_part = email_str.split('@')
+    
+    # Check local part (before @)
+    if not local_part or len(local_part) > 64:
+        return False
+    
+    # Cannot start or end with dot
+    if local_part.startswith('.') or local_part.endswith('.'):
+        return False
+    
+    # Cannot have consecutive dots
+    if '..' in local_part:
+        return False
+    
+    # Local part character validation
+    if not re.match(r'^[a-zA-Z0-9._%+-]+$', local_part):
+        return False
+    
+    # Check domain part (after @)
+    if not domain_part or len(domain_part) > 253:
+        return False
+    
+    # Domain must have at least one dot
+    if '.' not in domain_part:
+        return False
+    
+    # Cannot start or end with dot or dash
+    if domain_part.startswith('.') or domain_part.endswith('.') or domain_part.startswith('-') or domain_part.endswith('-'):
+        return False
+    
+    # Cannot have consecutive dots
+    if '..' in domain_part:
+        return False
+    
+    # Domain character validation
+    if not re.match(r'^[a-zA-Z0-9.-]+$', domain_part):
+        return False
+    
+    # Check TLD (last part after final dot)
+    domain_parts = domain_part.split('.')
+    tld = domain_parts[-1]
+    if not tld or len(tld) < 2 or not re.match(r'^[a-zA-Z]+$', tld):
+        return False
+    
+    return True
 
 
 def generate_timestamp_from_date(date_str):
