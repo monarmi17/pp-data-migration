@@ -87,8 +87,8 @@ def generate_timestamp_from_date(date_str):
                 else:
                     # If no format matches, try pandas parsing
                     base_date = pd.to_datetime(date_str)
-            except:
-                logger.warning(f"Could not parse date '{date_str}', using current date")
+            except Exception as parse_error:
+                logger.warning(f"Could not parse date '{date_str}' with pandas: {parse_error}, using current date")
                 base_date = datetime.now()
         
         # Add random hours (9-17 for business hours) and minutes
@@ -98,13 +98,21 @@ def generate_timestamp_from_date(date_str):
         # Create final timestamp
         final_datetime = base_date.replace(hour=random_hour, minute=random_minute, second=0, microsecond=0)
         
-        # Format as M/D/YYYY H:MM (matching template format)
-        return final_datetime.strftime('%-m/%-d/%Y %-H:%M')
+        # Format as M/D/YYYY H:MM (Windows-compatible format)
+        # Use standard format codes instead of platform-specific %-
+        month = final_datetime.month
+        day = final_datetime.day
+        year = final_datetime.year
+        hour = final_datetime.hour
+        minute = final_datetime.minute
+        
+        return f"{month}/{day}/{year} {hour}:{minute:02d}"
     
     except Exception as e:
         logger.warning(f"Error generating timestamp for date '{date_str}': {e}")
-        # Fallback to current time
-        return datetime.now().strftime('%-m/%-d/%Y %-H:%M')
+        # Fallback to current time with Windows-compatible format
+        now = datetime.now()
+        return f"{now.month}/{now.day}/{now.year} {now.hour}:{now.minute:02d}"
 
 
 def find_processed_orders_file(test_mode=False, region_name=None):
