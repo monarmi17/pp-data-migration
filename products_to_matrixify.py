@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Products to Matrixify CSV Converter with Variant Fixing and Error Analysis
+Products to Matrixify CSV Converter with Variant Fixing
 
 This script processes product data to create Matrixify-compatible CSV files.
-It combines variant fixing functionality (resolving duplicate variants) with 
-error analysis capabilities for failed imports.
+It includes variant fixing functionality to resolve duplicate variants by 
+splitting handles with color/identifier suffixes.
 
 Supports test mode and production mode:
 - Test mode: Processes datasource/test-data/products.xlsx
@@ -12,8 +12,7 @@ Supports test mode and production mode:
 
 Main Functions:
 1. Clean Variant Fixing: Resolves duplicate variants by splitting handles with color/identifier suffixes
-2. Error Analysis: Analyzes failed import results and creates error summaries
-3. Matrixify Format: Outputs clean CSV files ready for Shopify import
+2. Matrixify Format: Outputs clean CSV files ready for Shopify import
 
 Author: AI Assistant
 Date: 2024
@@ -171,299 +170,6 @@ class CleanVariantFixer:
                     if identifier.lower() not in current_title.lower():
                         new_title = f"{current_title} - {identifier.title()}"
                         df.loc[mask, 'Title'] = str(new_title)
-
-
-class ImportErrorAnalyzer:
-    """Analyzes import errors and groups them by generic error types."""
-    
-    def __init__(self, import_results_dir: str = "import-results", output_dir: str = "error-analysis"):
-        self.import_results_dir = import_results_dir
-        self.output_dir = output_dir
-        
-        # Create output directory
-        os.makedirs(self.output_dir, exist_ok=True)
-        
-        # Error pattern definitions
-        self.error_patterns = {
-            # Orders error patterns
-            'duplicate_sku_variants': {
-                'pattern': r'Found \[(\d+)\] Variants with the same SKU \[([^\]]+)\]',
-                'description': 'Duplicate SKU variants found',
-                'file_type': 'orders'
-            },
-            'missing_line_item_fields': {
-                'pattern': r'Line Items: Name can\'t be blank, Title can\'t be blank',
-                'description': 'Missing required line item fields (Name/Title)',
-                'file_type': 'orders'
-            },
-            'invalid_line_items': {
-                'pattern': r'Order: Line items is invalid',
-                'description': 'Invalid line items structure',
-                'file_type': 'orders'
-            },
-            
-            # Products error patterns
-            'inconsistent_title': {
-                'pattern': r'"Title" differs in each row',
-                'description': 'Inconsistent product titles across variants',
-                'file_type': 'products'
-            },
-            'inconsistent_body_html': {
-                'pattern': r'"Body HTML" differs in each row',
-                'description': 'Inconsistent product descriptions across variants',
-                'file_type': 'products'
-            },
-            'missing_required_fields': {
-                'pattern': r'can\'t be blank',
-                'description': 'Missing required product fields',
-                'file_type': 'products'
-            },
-            
-            # Generic patterns
-            'validation_error': {
-                'pattern': r'validation|invalid|error',
-                'description': 'General validation errors',
-                'file_type': 'both'
-            },
-            'duplicate_identifier': {
-                'pattern': r'duplicate|already exists|taken',
-                'description': 'Duplicate identifiers',
-                'file_type': 'both'
-            }
-        }
-    
-    def load_failed_records(self, file_path: str) -> pd.DataFrame:
-        """Load only failed records from a CSV file."""
-        try:
-            df = pd.read_csv(file_path)
-            failed_df = df[df['Import Result'] == 'Failed'].copy()
-            logger.info(f"Loaded {len(failed_df)} failed records from {os.path.basename(file_path)}")
-            return failed_df
-        except Exception as e:
-            logger.error(f"Error loading {file_path}: {e}")
-            return pd.DataFrame()
-    
-    def extract_error_details(self, comment: str) -> Dict[str, Any]:
-        """Extract structured error details from import comment."""
-        error_details = {
-            'raw_comment': comment,
-            'error_type': 'unknown',
-            'error_description': 'Unknown error',
-            'extracted_values': {}
-        }
-        
-        # Check each error pattern
-        for error_key, error_config in self.error_patterns.items():
-            pattern = error_config['pattern']
-            if re.search(pattern, comment, re.IGNORECASE):
-                error_details['error_type'] = error_key
-                error_details['error_description'] = error_config['description']
-                
-                # Extract specific values using regex groups
-                match = re.search(pattern, comment, re.IGNORECASE)
-                if match and match.groups():
-                    error_details['extracted_values'] = {
-                        f'group_{i+1}': group for i, group in enumerate(match.groups())
-                    }
-                break
-        
-        return error_details
-    
-    def get_key_identifiers(self, row: pd.Series, file_type: str) -> Dict[str, Any]:
-        """Extract key identifiers for backtracking issues."""
-        identifiers = {}
-        
-        if file_type == 'orders':
-            identifiers.update({
-                'order_name': row.get('Name', ''),
-                'sku': row.get('Line: SKU', ''),
-                'customer_email': row.get('Customer: Email', ''),
-                'processed_at': row.get('Processed At', ''),
-                'transaction_amount': row.get('Transaction: Amount', ''),
-                'payment_status': row.get('Payment: Status', ''),
-                'fulfillment_status': row.get('Fulfillment: Status', '')
-            })
-        elif file_type == 'products':
-            identifiers.update({
-                'handle': row.get('Handle', ''),
-                'variant_sku': row.get('Variant SKU', ''),
-                'title': row.get('Title', ''),
-                'vendor': row.get('Vendor', ''),
-                'status': row.get('Status', ''),
-                'variant_price': row.get('Variant Price', ''),
-                'cost_per_item': row.get('Cost per item', '')
-            })
-        
-        return identifiers
-    
-    def analyze_file(self, file_path: str) -> Dict[str, Any]:
-        """Analyze failed imports from a single file."""
-        filename = os.path.basename(file_path)
-        file_type = 'orders' if 'orders' in filename.lower() else 'products'
-        
-        logger.info(f"Analyzing {filename}...")
-        
-        # Load failed records
-        failed_df = self.load_failed_records(file_path)
-        if failed_df.empty:
-            logger.info(f"No failed records found in {filename}")
-            return {}
-        
-        # Analyze each failed record
-        analysis_results = []
-        error_counts = Counter()
-        
-        for idx, row in failed_df.iterrows():
-            # Extract error details
-            error_details = self.extract_error_details(row['Import Comment'])
-            
-            # Get key identifiers
-            identifiers = self.get_key_identifiers(row, file_type)
-            
-            # Create analysis record
-            analysis_record = {
-                'file_type': file_type,
-                'row_index': idx,
-                'error_type': error_details['error_type'],
-                'error_description': error_details['error_description'],
-                'raw_comment': error_details['raw_comment'],
-                **identifiers,
-                **error_details['extracted_values']
-            }
-            
-            analysis_results.append(analysis_record)
-            error_counts[error_details['error_type']] += 1
-        
-        # Create summary
-        summary = {
-            'file_type': file_type,
-            'total_failed_records': len(failed_df),
-            'error_counts': dict(error_counts),
-            'analysis_results': analysis_results
-        }
-        
-        logger.info(f"Found {len(failed_df)} failed records with {len(error_counts)} error types")
-        for error_type, count in error_counts.most_common():
-            logger.info(f"  - {error_type}: {count} records")
-        
-        return summary
-    
-    def create_summary_csv(self, all_analyses: List[Dict[str, Any]]) -> None:
-        """Create summary CSV files for each file type."""
-        
-        for analysis in all_analyses:
-            if not analysis:
-                continue
-                
-            file_type = analysis['file_type']
-            results_df = pd.DataFrame(analysis['analysis_results'])
-            
-            # Create summary filename (no timestamp)
-            summary_filename = f"{file_type}_error_summary.csv"
-            summary_path = os.path.join(self.output_dir, summary_filename)
-            
-            # Select only significant columns for analysis
-            if file_type == 'orders':
-                significant_columns = [
-                    'error_type', 'error_description', 'order_name', 'sku', 
-                    'customer_email', 'processed_at', 'transaction_amount',
-                    'payment_status', 'fulfillment_status', 'raw_comment'
-                ]
-            else:  # products
-                significant_columns = [
-                    'error_type', 'error_description', 'handle', 'variant_sku',
-                    'title', 'vendor', 'status', 'variant_price', 'cost_per_item',
-                    'raw_comment'
-                ]
-            
-            # Filter to available columns
-            available_columns = [col for col in significant_columns if col in results_df.columns]
-            summary_df = results_df[available_columns].copy()
-            
-            # Sort by error type for better analysis
-            summary_df = summary_df.sort_values(['error_type', 'error_description'])
-            
-            # Save summary
-            summary_df.to_csv(summary_path, index=False)
-            logger.info(f"Created summary: {summary_path}")
-    
-    def create_error_type_summary(self, all_analyses: List[Dict[str, Any]]) -> None:
-        """Create a high-level error type summary."""
-        
-        # Combine all error counts
-        total_error_counts = Counter()
-        file_type_counts = defaultdict(Counter)
-        
-        for analysis in all_analyses:
-            if not analysis:
-                continue
-                
-            file_type = analysis['file_type']
-            error_counts = analysis['error_counts']
-            
-            for error_type, count in error_counts.items():
-                total_error_counts[error_type] += count
-                file_type_counts[file_type][error_type] += count
-        
-        # Create summary DataFrame
-        summary_data = []
-        for error_type, total_count in total_error_counts.most_common():
-            summary_data.append({
-                'error_type': error_type,
-                'total_count': total_count,
-                'orders_count': file_type_counts['orders'].get(error_type, 0),
-                'products_count': file_type_counts['products'].get(error_type, 0),
-                'description': self.error_patterns.get(error_type, {}).get('description', 'Unknown error')
-            })
-        
-        summary_df = pd.DataFrame(summary_data)
-        
-        # Save error type summary (no timestamp)
-        summary_filename = "error_type_summary.csv"
-        summary_path = os.path.join(self.output_dir, summary_filename)
-        summary_df.to_csv(summary_path, index=False)
-        logger.info(f"Created error type summary: {summary_path}")
-        
-        # Print summary to console
-        logger.info(f"\n{'='*60}")
-        logger.info("ERROR ANALYSIS SUMMARY")
-        logger.info(f"{'='*60}")
-        logger.info(f"Total failed records analyzed: {sum(total_error_counts.values())}")
-        logger.info(f"Unique error types found: {len(total_error_counts)}")
-        logger.info(f"\nTop error types:")
-        for _, row in summary_df.head(10).iterrows():
-            logger.info(f"  {row['error_type']}: {row['total_count']} records ({row['description']})")
-    
-    def run_analysis(self) -> None:
-        """Run the complete error analysis."""
-        logger.info("Running Import Error Analysis...")
-        logger.info(f"Import results directory: {self.import_results_dir}")
-        logger.info(f"Output directory: {self.output_dir}")
-        
-        # Find CSV files in import-results directory
-        csv_files = []
-        if os.path.exists(self.import_results_dir):
-            for file in os.listdir(self.import_results_dir):
-                if file.endswith('.csv'):
-                    csv_files.append(os.path.join(self.import_results_dir, file))
-        
-        if not csv_files:
-            logger.info(f"No CSV files found in {self.import_results_dir}")
-            return
-        
-        logger.info(f"Found CSV files: {[os.path.basename(f) for f in csv_files]}")
-        
-        # Analyze each file
-        all_analyses = []
-        for csv_file in csv_files:
-            analysis = self.analyze_file(csv_file)
-            all_analyses.append(analysis)
-        
-        # Create summary files
-        self.create_summary_csv(all_analyses)
-        self.create_error_type_summary(all_analyses)
-        
-        logger.info(f"Analysis complete! Results saved to: {self.output_dir}")
 
 
 def find_products_file(test_mode=False):
@@ -982,9 +688,8 @@ def validate_output(output_path):
 
 def parse_arguments():
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description='Process products data to Matrixify CSV format with variant fixing and error analysis')
+    parser = argparse.ArgumentParser(description='Process products data to Matrixify CSV format with variant fixing')
     parser.add_argument('--test', action='store_true', help='Run in test mode (uses test-data)')
-    parser.add_argument('--analyze-errors', action='store_true', help='Run error analysis on import results')
     parser.add_argument('--skip-variant-fixing', action='store_true', help='Skip variant fixing step')
     parser.add_argument('--input-file', type=str, help='Custom input file path (overrides test/prod mode)')
     return parser.parse_args()
@@ -1016,21 +721,6 @@ def main():
     args = parse_arguments()
     
     try:
-        # Handle error analysis if requested (special case)
-        if args.analyze_errors and not args.input_file and not args.test:
-            # Setup logging for error analysis only
-            setup_logging(test_mode=True)
-            
-            logger.info("="*60)
-            logger.info("Starting Import Error Analysis")
-            logger.info("="*60)
-            
-            analyzer = ImportErrorAnalyzer()
-            analyzer.run_analysis()
-            
-            logger.info("Error analysis completed.")
-            return
-        
         # Setup logging for normal processing
         setup_logging(args.test)
         
@@ -1041,12 +731,6 @@ def main():
         else:
             logger.info("Running in PRODUCTION MODE")
         logger.info("="*60)
-        
-        # Handle error analysis if requested alongside processing
-        if args.analyze_errors:
-            logger.info("Running error analysis...")
-            analyzer = ImportErrorAnalyzer()
-            analyzer.run_analysis()
         
         # Find and load products data
         if args.input_file:

@@ -139,8 +139,6 @@ services:
       - ./processed:/app/processed
       - ./error-rows:/app/error-rows
       - ./logs:/app/logs
-      - ./import-results:/app/import-results
-      - ./error-analysis:/app/error-analysis
       - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
@@ -157,18 +155,16 @@ services:
       - ./processed:/app/processed
       - ./error-rows:/app/error-rows
       - ./logs:/app/logs
-      - ./import-results:/app/import-results
-      - ./error-analysis:/app/error-analysis
       - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
     command: python products_to_matrixify.py
 
-  # Service for analyzing import errors only
-  analyze-import-errors:
+  # Service for analyzing region-specific orders import errors
+  analyze-region-orders-import-errors:
     build:
       context: .
-      dockerfile: Dockerfile.products
+      dockerfile: Dockerfile.error-analysis
     volumes:
       - ./import-results:/app/import-results
       - ./error-analysis:/app/error-analysis
@@ -176,20 +172,21 @@ services:
       - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
-    command: python products_to_matrixify.py --analyze-errors
+    command: python analyze_region_orders_import_errors.py
 
-  # Legacy Error Analysis Service (kept for backward compatibility)
-  error-analysis:
+  # Service for analyzing products import errors
+  analyze-products-import-errors:
     build:
       context: .
       dockerfile: Dockerfile.error-analysis
     volumes:
       - ./import-results:/app/import-results
       - ./error-analysis:/app/error-analysis
+      - ./logs:/app/logs
       - .:/app:ro # Bind mount scripts for development
     environment:
       - PYTHONUNBUFFERED=1
-    command: python analyze_import_errors.py
+    command: python analyze_products_import_errors.py
 
   # Product Name Pattern Analysis Services
   # Service for generating product name pattern examples

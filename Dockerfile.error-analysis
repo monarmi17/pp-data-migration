@@ -10,11 +10,12 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the error analysis script
-COPY analyze_import_errors.py .
+# Copy the error analysis scripts
+COPY analyze_region_orders_import_errors.py .
+COPY analyze_products_import_errors.py .
 
 # Create necessary directories
 RUN mkdir -p import-results error-analysis
 
-# Default command
-CMD ["python", "analyze_import_errors.py"]
+# Default command (will be overridden by docker-compose services)
+CMD ["python", "analyze_region_orders_import_errors.py"]
