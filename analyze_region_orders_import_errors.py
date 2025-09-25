@@ -6,13 +6,16 @@ Analyzes failed orders imports from region-specific CSV files in the import-resu
 Groups errors by generic error types and outputs summary CSV files for analysis.
 Works independently of .env configuration and processes all region CSV files found.
 
+Expected file pattern: [region]_matrixify_orders_[timestamp].csv
+Example: brentwood_village_matrixify_orders_2025_09_23_164637.csv
+
 Usage:
     python analyze_region_orders_import_errors.py [--output-dir OUTPUT_DIR] [--verbose]
 
 Output:
     - error-analysis/ directory
-    - [region]_error_type_summary.csv files for each region
     - [region]_orders_error_summary.csv files for each region
+    - [region]_orders_error_type_summary.csv files for each region
 """
 
 import pandas as pd
@@ -109,8 +112,8 @@ class RegionOrdersErrorAnalyzer:
                 
                 # Try to determine if this is an orders file
                 try:
-                    # Read a few rows to check if it's an orders file
-                    sample_df = pd.read_csv(file_path, nrows=5)
+                    # Read a few rows to check if it's an orders file (suppress warnings for sample)
+                    sample_df = pd.read_csv(file_path, nrows=5, low_memory=False)
                     
                     # Check for orders-specific columns
                     orders_columns = ['Name', 'Line: SKU', 'Customer: Email', 'Processed At']
@@ -130,15 +133,23 @@ class RegionOrdersErrorAnalyzer:
         # Remove .csv extension
         base_name = filename.replace('.csv', '')
         
-        # Common patterns for region extraction
-        patterns = [
+        # Primary pattern: [region]_matrixify_orders_[timestamp]
+        # Example: brentwood_village_matrixify_orders_2025_09_23_164637
+        matrixify_orders_pattern = r'^(.+)_matrixify_orders_\d{4}_\d{2}_\d{2}_\d{6}$'
+        match = re.match(matrixify_orders_pattern, base_name, re.IGNORECASE)
+        if match:
+            region = match.group(1)
+            return region.replace('-', '_').lower()
+        
+        # Fallback patterns for other order file formats
+        fallback_patterns = [
             r'^([^_]+)_.*orders.*',  # region_something_orders
             r'.*orders.*_([^_]+)$',  # something_orders_region
             r'^([^_]+)_.*',          # region_anything
             r'.*_([^_]+)$'           # anything_region
         ]
         
-        for pattern in patterns:
+        for pattern in fallback_patterns:
             match = re.match(pattern, base_name, re.IGNORECASE)
             if match:
                 region = match.group(1)
@@ -152,7 +163,8 @@ class RegionOrdersErrorAnalyzer:
     def load_failed_records(self, file_path: str) -> pd.DataFrame:
         """Load only failed records from a CSV file."""
         try:
-            df = pd.read_csv(file_path)
+            # Use low_memory=False to avoid mixed type warnings for large files
+            df = pd.read_csv(file_path, low_memory=False)
             
             # Check if Import Result column exists
             if 'Import Result' not in df.columns:
@@ -325,7 +337,7 @@ class RegionOrdersErrorAnalyzer:
         error_type_df = error_type_df.drop('severity_order', axis=1)
         
         # Save error type summary
-        error_type_summary_filename = f"{region_name}_error_type_summary.csv"
+        error_type_summary_filename = f"{region_name}_orders_error_type_summary.csv"
         error_type_summary_path = os.path.join(self.output_dir, error_type_summary_filename)
         error_type_df.to_csv(error_type_summary_path, index=False)
         logger.info(f"Created error type summary: {error_type_summary_path}")

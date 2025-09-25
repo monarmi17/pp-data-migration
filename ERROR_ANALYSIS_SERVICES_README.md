@@ -15,9 +15,13 @@ The error analysis functionality has been separated into two specialized service
 
 **Purpose**: Analyzes failed orders imports from region-specific CSV files.
 
+**Expected File Pattern**: `[region]_matrixify_orders_[timestamp].csv`  
+**Example**: `brentwood_village_matrixify_orders_2025_09_23_164637.csv`
+
 **Features**:
 
 - Automatically detects region-specific orders CSV files in `import-results/` directory
+- Extracts region names from the matrixify orders filename pattern
 - Works independently of `.env` configuration
 - Creates region-specific error summaries
 - Groups errors by severity (high, medium, low)
@@ -26,7 +30,7 @@ The error analysis functionality has been separated into two specialized service
 **Output Files**:
 
 - `[region]_orders_error_summary.csv`: Detailed error analysis for each region
-- `[region]_error_type_summary.csv`: Error type summary for each region
+- `[region]_orders_error_type_summary.csv`: Error type summary for each region
 - `all_regions_orders_error_summary.csv`: Consolidated summary across all regions
 
 **Usage**:
@@ -113,12 +117,11 @@ python analyze_products_import_errors.py --output-dir custom-analysis --verbose
 ├── analyze_products_import_errors.py         # Products error analyzer
 ├── Dockerfile.error-analysis                 # Docker container for error analysis
 ├── import-results/                           # Input directory for CSV files
-│   ├── orders.csv                           # Failed orders import results
 │   ├── products.csv                         # Failed products import results
-│   └── [region]_orders.csv                 # Region-specific orders files
+│   └── [region]_matrixify_orders_[timestamp].csv  # Region-specific orders files
 └── error-analysis/                          # Output directory for analysis
     ├── [region]_orders_error_summary.csv
-    ├── [region]_error_type_summary.csv
+    ├── [region]_orders_error_type_summary.csv
     ├── products_error_summary.csv
     ├── products_error_type_summary.csv
     └── all_regions_orders_error_summary.csv
