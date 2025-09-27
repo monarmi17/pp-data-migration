@@ -346,6 +346,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                 matrixify_row = {
                     'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                     'Command': 'UPDATE',
+                    'Line: Command': "MERGE",
                     'Processed At': processed_at,
                     'Customer: Email': customer_email,
                     'Line: Type': 'Line Item',
@@ -483,6 +484,7 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
             matrixify_row = {
                 'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                 'Command': 'UPDATE',
+                'Line: Command': "MERGE",
                 'Processed At': processed_at,
                 'Customer: Email': customer_email,
                 'Line: Type': 'Line Item',
