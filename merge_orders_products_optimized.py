@@ -299,6 +299,10 @@ def merge_data_simple(orders_path, columns, sku_mapping, region_name="test", ski
         mapped_df = orders_df[orders_df['Product Code'].notna()].copy()
         unmapped_df = orders_df[orders_df['Product Code'].isna()].copy()
 
+        # Keep important columns first
+        important_cols = [col for col in ['Product', 'Product Name', 'Product Code', 'Error_Reason'] if col in unmapped_df.columns]
+        unmapped_df = unmapped_df[important_cols + [c for c in unmapped_df.columns if c not in important_cols]]
+
         # Create filenames
         mapped_filename = f"{region_name}_mapped_order_line_items_with_product_codes.xlsx"
         unmapped_filename = f"{region_name}_unmapped_order_line_items_with_product_codes.xlsx"
@@ -446,6 +450,10 @@ def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test", sk
         # Split mapped vs unmapped
         mapped_df = final_df[final_df['Product Code'].notna()].copy()
         unmapped_df = final_df[final_df['Product Code'].isna()].copy()
+
+        # Keep important columns first
+        important_cols = [col for col in ['Product', 'Product Name', 'Product Code', 'Error_Reason'] if col in unmapped_df.columns]
+        unmapped_df = unmapped_df[important_cols + [c for c in unmapped_df.columns if c not in important_cols]]
 
         # Create filenames
         mapped_filename = f"{region_name}_mapped_order_line_items_with_product_codes.xlsx"
