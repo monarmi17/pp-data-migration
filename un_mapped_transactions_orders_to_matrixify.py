@@ -287,7 +287,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
         # Generate timestamped filename
         timestamp = datetime.now().strftime('%Y_%m_%d_%H%M%S')
         region_name = orders_path.stem.replace('_order_line_items_with_product_codes', '')
-        output_filename = f"{region_name}_matrixify_orders_{timestamp}.csv"
+        output_filename = f"{region_name}_transactions_matrixify_orders_{timestamp}.csv"
         output_path = output_dir / output_filename
 
         # Initialize list to store processed chunks
@@ -347,14 +347,10 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                 matrixify_row = {
                     'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                     'Command': 'UPDATE',
-                    'Line: Command': "MERGE",
-                    'Processed At': processed_at,
-                    'Customer: Email': customer_email,
-                    'Line: Type': 'Line Item',
-                    'Line: Quantity': quantity,
-                    'Line: Price': float(row['Price ($)']),
-                    'Line: Title': product_title,
-                    'Line: Grams': 0,
+                    'Line: Type': 'Transaction',
+                    'Transaction: Kind': 'sale',
+                    'Transaction: Processed At': processed_at,
+                    'Transaction: Amount': float(row['Price ($)']),
                 }
 
                 matrixify_data.append(matrixify_row)
@@ -488,14 +484,10 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
             matrixify_row = {
                 'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                 'Command': 'UPDATE',
-                'Line: Command': "MERGE",
-                'Processed At': processed_at,
-                'Customer: Email': customer_email,
-                'Line: Type': 'Line Item',
-                'Line: Quantity': quantity,
-                'Line: Price': float(row['Price ($)']),
-                'Line: Title': product_title,
-                'Line: Grams': 0,
+                'Line: Type': 'Transaction',
+                'Transaction: Kind': 'sale',
+                'Transaction: Processed At': processed_at,
+                'Transaction: Amount': float(row['Price ($)']),
             }
 
             matrixify_data.append(matrixify_row)
@@ -530,10 +522,10 @@ def save_matrixify_csv(matrixify_df, region_name="test", test_mode=False):
 
         # Generate timestamped filename
         if test_mode:
-            output_filename = "test_matrixify_orders.csv"
+            output_filename = "test_transactions_matrixify_orders.csv"
         else:
             timestamp = datetime.now().strftime('%Y_%m_%d_%H%M%S')
-            output_filename = f"{region_name}_matrixify_orders_{timestamp}.csv"
+            output_filename = f"{region_name}_transactions_matrixify_orders_{timestamp}.csv"
 
         output_path = output_dir / output_filename
 
