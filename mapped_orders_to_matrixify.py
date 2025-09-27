@@ -324,6 +324,11 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                 if is_valid_email(row['Email']):
                     customer_email = str(row['Email']).strip()
 
+                # Handle Product (Title) - convert to string, handle NaN
+                product_title = ''
+                if pd.notna(row['Product name']):
+                    product_title = str(row['Product name']).strip()
+
                 # Ensure quantity is at least 1
                 quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
 
@@ -350,6 +355,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                     'Processed At': processed_at,
                     'Customer: Email': customer_email,
                     'Line: Type': 'Line Item',
+                    'Line: Title': product_title,
                     'Line: SKU': product_code,  # Product Code or empty if not available
                     'Line: Variant Barcode': variant_barcode,  # Original Product value
                     'Line: Quantity': quantity,
@@ -462,6 +468,11 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
             if is_valid_email(row['Email']):
                 customer_email = str(row['Email']).strip()
 
+            # Handle Product (Title) - convert to string, handle NaN
+            product_title = ''
+            if pd.notna(row['Product name']):
+                product_title = str(row['Product name']).strip()
+
             # Ensure quantity is at least 1
             quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
 
@@ -488,6 +499,7 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
                 'Processed At': processed_at,
                 'Customer: Email': customer_email,
                 'Line: Type': 'Line Item',
+                'Line: Title': product_title,
                 'Line: SKU': product_code,  # Product Code or empty if not available
                 'Line: Variant Barcode': variant_barcode,  # Original Product value
                 'Line: Quantity': quantity,

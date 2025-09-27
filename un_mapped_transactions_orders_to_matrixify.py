@@ -350,7 +350,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                     'Line: Type': 'Transaction',
                     'Transaction: Kind': 'sale',
                     'Transaction: Processed At': processed_at,
-                    'Transaction: Amount': float(row['Price ($)']),
+                    'Transaction: Amount': float(row['Price ($)'] * quantity),
                 }
 
                 matrixify_data.append(matrixify_row)
@@ -487,7 +487,7 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
                 'Line: Type': 'Transaction',
                 'Transaction: Kind': 'sale',
                 'Transaction: Processed At': processed_at,
-                'Transaction: Amount': float(row['Price ($)']),
+                'Transaction: Amount': float(row['Price ($)'] * quantity),
             }
 
             matrixify_data.append(matrixify_row)
