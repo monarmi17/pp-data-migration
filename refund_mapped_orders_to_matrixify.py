@@ -403,6 +403,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                     'Refund: ID': str(int(ticket_number)),
                     'Transaction: Kind': 'refund',
                     'Transaction: Amount': total_price,
+                    "Refund: Created At": processed_at,
                 }
 
                 matrixify_data.append(matrixify_row)
@@ -550,6 +551,7 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
                 'Refund: ID': str(int(ticket_number)),
                 'Transaction: Kind': 'refund',
                 'Transaction: Amount': total_price,
+                "Refund: Created At": processed_at,
             }
 
             matrixify_data.append(matrixify_row)
