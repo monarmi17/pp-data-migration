@@ -334,6 +334,8 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                 if pd.isna(ticket_number):
                     ticket_number = 0  # Default value for missing ticket numbers
 
+
+
                 # Handle Product Code - use empty string if NaN
                 product_code = ''
                 if 'Product Code' in row and pd.notna(row['Product Code']):
@@ -344,17 +346,33 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                 if pd.notna(row['Product']):
                     variant_barcode = str(row['Product']).strip()
 
+                product_title = ''
+                if pd.notna(row['Product name']):
+                    product_title = str(row['Product name']).strip()
+
+                location = ''
+                if pd.notna(row['Location']):
+                    location = str(row['Location']).strip()
+
                 matrixify_row = {
                     'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
-                    'Command': 'MERGE',
+                    'Command': 'REPLACE',
                     'Line: Command': "MERGE",
-                    'Processed At': processed_at,
                     'Customer: Email': customer_email,
+                    'Processed At': processed_at,
                     'Line: Type': 'Line Item',
                     'Line: Quantity': quantity,
                     'Line: Price': float(row['Price ($)']),
+                    'Line: Requires Shipping': 'TRUE',
+                    'Fulfillment: Location': location,
+                    'Fulfillment: Status': 'success',
+                    'Fulfillment: Shipment Status': 'delivered',
+                    'Transaction: Kind': 'sale',
+                    'Transaction: Status': 'success',
+                    'Transaction: Processed At': processed_at,
+                    'Transaction: Amount': float(row['Price ($)'] * quantity),
+                    'Payment: Status': 'paid',
                     'Line: Title': product_title,
-                    'Line: Grams': 0,
                 }
 
                 matrixify_data.append(matrixify_row)
@@ -485,17 +503,28 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
             if pd.notna(row['Product']):
                 variant_barcode = str(row['Product']).strip()
 
+            location = ''
+            if pd.notna(row['Location']):
+                location = str(row['Location']).strip()
+
             matrixify_row = {
                 'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
-                'Command': 'MERGE',
+                'Command': 'REPLACE',
                 'Line: Command': "MERGE",
-                'Processed At': processed_at,
                 'Customer: Email': customer_email,
+                'Processed At': processed_at,
                 'Line: Type': 'Line Item',
                 'Line: Quantity': quantity,
                 'Line: Price': float(row['Price ($)']),
+                'Line: Requires Shipping': 'TRUE',
+                'Fulfillment: Location': location,
+                'Fulfillment: Status': 'success',
+                'Fulfillment: Shipment Status': 'delivered',
+                'Transaction: Kind': 'sale',
+                'Transaction: Status': 'success',
+                'Transaction: Amount': float(row['Price ($)'] * quantity),
+                'Payment: Status': 'paid',
                 'Line: Title': product_title,
-                'Line: Grams': 0,
             }
 
             matrixify_data.append(matrixify_row)

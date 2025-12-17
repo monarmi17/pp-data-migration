@@ -17,6 +17,7 @@ Column Mapping:
 - Customer: Email -> Email (validated, blank if invalid)
 - Line: Type -> Always 'Line Item'
 - Line: SKU -> Product Code (empty if not available)
+- Line: Title -> Product (original product identifier)
 - Line: Variant Barcode -> Product (original product identifier)
 - Line: Quantity -> Product quantity (minimum 1)
 - Line: Price -> Price ($)
@@ -286,7 +287,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
         # Generate timestamped filename
         timestamp = datetime.now().strftime('%Y_%m_%d_%H%M%S')
         region_name = orders_path.stem.replace('_order_line_items_with_product_codes', '')
-        output_filename = f"{region_name}_mapped_fulfilment_matrixify_orders_{timestamp}.csv"
+        output_filename = f"{region_name}_transactions_matrixify_orders_{timestamp}.csv"
         output_path = output_dir / output_filename
 
         # Initialize list to store processed chunks
@@ -346,9 +347,12 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                 matrixify_row = {
                     'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                     'Command': 'UPDATE',
-                    'Line: Type': 'Fulfillment Line',
-                    'Fulfillment: Status': 'success',
-                    'Fulfillment: Shipment Status': 'delivered'
+                    'Line: Type': 'Transaction',
+                    'Transaction: Status': 'success',
+                    'Transaction: Kind': 'sale',
+                    'Payment: Status': 'paid',
+                    'Transaction: Processed At': processed_at,
+                    'Transaction: Amount': float(row['Price ($)'] * quantity),
                 }
 
                 matrixify_data.append(matrixify_row)
@@ -455,6 +459,11 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
             if is_valid_email(row['Email']):
                 customer_email = str(row['Email']).strip()
 
+            # Handle Product (Title) - convert to string, handle NaN
+            product_title = ''
+            if pd.notna(row['Product name']):
+                product_title = str(row['Product name']).strip()
+
             # Ensure quantity is at least 1
             quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
 
@@ -477,9 +486,11 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
             matrixify_row = {
                 'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                 'Command': 'UPDATE',
-                'Line: Type': 'Fulfillment Line',
-                'Fulfillment: Status': 'success',
-                'Fulfillment: Shipment Status': 'delivered'
+                'Line: Type': 'Transaction',
+                'Transaction: Status': 'success',
+                'Transaction: Kind': 'sale',
+                'Payment: Status': 'paid',
+                'Transaction: Amount': float(row['Price ($)'] * quantity),
             }
 
             matrixify_data.append(matrixify_row)
@@ -514,10 +525,10 @@ def save_matrixify_csv(matrixify_df, region_name="test", test_mode=False):
 
         # Generate timestamped filename
         if test_mode:
-            output_filename = "test_mapped_fulfilment_matrixify_orders.csv"
+            output_filename = "test_transactions_matrixify_orders.csv"
         else:
             timestamp = datetime.now().strftime('%Y_%m_%d_%H%M%S')
-            output_filename = f"{region_name}_mapped_fulfilment_matrixify_orders_{timestamp}.csv"
+            output_filename = f"{region_name}_transactions_matrixify_orders_{timestamp}.csv"
 
         output_path = output_dir / output_filename
 

@@ -314,10 +314,16 @@ def merge_data_simple(orders_path, columns, sku_mapping, region_name="test", ski
         mapped_df.to_excel(mapped_path, index=False, engine='openpyxl')
         unmapped_df.to_excel(unmapped_path, index=False, engine='openpyxl')
 
+        # Also save full combined file for validation
+        combined_filename = f"{region_name}_order_line_items_with_product_codes.xlsx"
+        combined_path = processed_dir / combined_filename
+        orders_df.to_excel(combined_path, index=False, engine='openpyxl')
+        logger.info(f"Saved combined file to: {combined_path}")
+
         logger.info(f"Output files:")
         logger.info(f"  - {mapped_path} ({len(mapped_df):,} rows)")
         logger.info(f"  - {unmapped_path} ({len(unmapped_df):,} rows)")
-
+        logger.info(f"  - {combined_path} ({len(orders_df):,} rows)")
 
         processing_time = time.time() - start_time
 

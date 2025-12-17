@@ -344,12 +344,22 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                 if pd.notna(row['Product']):
                     variant_barcode = str(row['Product']).strip()
 
+                location = ''
+                if pd.notna(row['Location']):
+                    location = str(row['Location']).strip()
+
                 matrixify_row = {
                     'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                     'Command': 'UPDATE',
                     'Line: Type': 'Fulfillment Line',
                     'Fulfillment: Status': 'success',
                     'Fulfillment: Shipment Status': 'delivered',
+                    'Fulfillment: Location': location,
+                    'Transaction: Kind': 'sale',
+                    'Transaction: Status': 'success',
+                    'Transaction: Processed At': processed_at,
+                    'Transaction: Amount': float(row['Price ($)'] * quantity),
+                    'Payment: Status': 'paid',
                 }
 
                 matrixify_data.append(matrixify_row)
@@ -480,12 +490,21 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
             if pd.notna(row['Product']):
                 variant_barcode = str(row['Product']).strip()
 
+            location = ''
+            if pd.notna(row['Location']):
+                location = str(row['Location']).strip()
+
             matrixify_row = {
                 'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                 'Command': 'UPDATE',
                 'Line: Type': 'Fulfillment Line',
                 'Fulfillment: Status': 'success',
                 'Fulfillment: Shipment Status': 'delivered',
+                'Fulfillment: Location': location,
+                'Transaction: Kind': 'sale',
+                'Transaction: Status': 'success',
+                'Transaction: Amount': float(row['Price ($)'] * quantity),
+                'Payment: Status': 'paid',
             }
 
             matrixify_data.append(matrixify_row)

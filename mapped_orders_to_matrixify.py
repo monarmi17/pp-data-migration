@@ -119,48 +119,86 @@ def is_valid_email(email):
     return True
 
 
+# def generate_timestamp_from_date(date_str):
+#     """
+#     Generate a logical timestamp based on the date string.
+#     Adds random hours/minutes to make it look realistic.
+#     """
+#     try:
+#         # Parse the date string (assuming format like "2024-01-15" or similar)
+#         if pd.isna(date_str) or date_str == '':
+#             # Default to today if date is missing
+#             base_date = datetime.now()
+#         else:
+#             # Try to parse various date formats
+#             date_str = str(date_str).strip()
+#             try:
+#                 # Try common date formats
+#                 for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%Y-%m-%d %H:%M:%S']:
+#                     try:
+#                         base_date = datetime.strptime(date_str, fmt)
+#                         break
+#                     except ValueError:
+#                         continue
+#                 else:
+#                     # If no format matches, try pandas parsing
+#                     base_date = pd.to_datetime(date_str, dayfirst=True)
+#             except:
+#                 logger.warning(f"Could not parse date '{date_str}', using current date")
+#                 base_date = datetime.now()
+
+#         # Add random hours (9-17 for business hours) and minutes
+#         random_hour = random.randint(9, 17)
+#         random_minute = random.randint(0, 59)
+
+#         # Create final timestamp
+#         final_datetime = base_date.replace(hour=random_hour, minute=random_minute, second=0, microsecond=0)
+
+#         # Format as M/D/YYYY H:MM (matching template format)
+#         return final_datetime.strftime('%Y-%m-%d %H:%M:00 -0400')
+
+#     except Exception as e:
+#         logger.warning(f"Error generating timestamp for date '{date_str}': {e}")
+#         # Fallback to current time
+#         now = datetime.now().replace(second=0, microsecond=0)
+#         return now.strftime('%Y-%m-%d %H:%M:00 -0400')
+
+
+
 def generate_timestamp_from_date(date_str):
     """
     Generate a logical timestamp based on the date string.
     Adds random hours/minutes to make it look realistic.
     """
     try:
-        # Parse the date string (assuming format like "2024-01-15" or similar)
         if pd.isna(date_str) or date_str == '':
-            # Default to today if date is missing
             base_date = datetime.now()
         else:
-            # Try to parse various date formats
             date_str = str(date_str).strip()
             try:
-                # Try common date formats
-                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d %H:%M:%S']:
+                # ✅ Put day-first formats before month-first ones
+                for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%Y-%m-%d %H:%M:%S']:
                     try:
                         base_date = datetime.strptime(date_str, fmt)
                         break
                     except ValueError:
                         continue
                 else:
-                    # If no format matches, try pandas parsing
-                    base_date = pd.to_datetime(date_str)
+                    base_date = pd.to_datetime(date_str, dayfirst=True)
             except:
                 logger.warning(f"Could not parse date '{date_str}', using current date")
                 base_date = datetime.now()
 
-        # Add random hours (9-17 for business hours) and minutes
         random_hour = random.randint(9, 17)
         random_minute = random.randint(0, 59)
-
-        # Create final timestamp
         final_datetime = base_date.replace(hour=random_hour, minute=random_minute, second=0, microsecond=0)
 
-        # Format as M/D/YYYY H:MM (matching template format)
-        return final_datetime.strftime('%-m/%-d/%Y %-H:%M')
+        return final_datetime.strftime('%Y-%m-%d %H:%M:00 -0400')
 
     except Exception as e:
         logger.warning(f"Error generating timestamp for date '{date_str}': {e}")
-        # Fallback to current time
-        return datetime.now().strftime('%-m/%-d/%Y %-H:%M')
+        now = datetime.now().replace(second=0, microsecond=0)
+        return now.strftime('%Y-%m-%d %H:%M:00 -0400')
 
 
 def find_processed_orders_file(test_mode=False, region_name=None):
@@ -330,7 +368,11 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                     product_title = str(row['Product name']).strip()
 
                 # Ensure quantity is at least 1
-                quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
+                # quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
+                if pd.isna(row['Product quantity']):
+                    quantity = 1
+                else:
+                  quantity = abs(int(row['Product quantity']))
 
                 # Create Matrixify row
                 # Handle NaN values in Ticket number
@@ -348,20 +390,53 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                 if pd.notna(row['Product']):
                     variant_barcode = str(row['Product']).strip()
 
+                location = ''
+                if pd.notna(row['Location']):
+                    location = str(row['Location']).strip()
+
+                if pd.isna(row['Price ($)']):
+                  price = 0
+                else:
+                  price = abs(float(row['Price ($)']))
+
+                if pd.isna(row['Tax ($)']):
+                  tax = 0
+                else:
+                  tax = abs(float(row['Tax ($)']))
+
+                if pd.isna(row['Discount ($)']):
+                  discount = 0
+                else:
+                  discount = abs(float(row['Discount ($)']))
+
+                total_price = ((price * abs(quantity) ) + tax) - discount
+
                 matrixify_row = {
-                    'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
-                    'Command': 'MERGE',
-                    'Line: Command': "MERGE",
                     'Processed At': processed_at,
+                    'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
+                    'Command': 'REPLACE',
+                    'Line: Command': "MERGE",
                     'Customer: Email': customer_email,
                     'Line: Type': 'Line Item',
-                    'Line: Title': product_title,
-                    'Line: SKU': product_code,  # Product Code or empty if not available
-                    'Line: Variant Barcode': variant_barcode,  # Original Product value
-                    'Line: Quantity': quantity,
+                    'Line: Quantity': abs(quantity),
                     'Line: Price': float(row['Price ($)']),
-                    'Line: Grams': 0,
                     'Line: Requires Shipping': 'TRUE',
+                    'Fulfillment: Location': location,
+                    'Fulfillment: Status': 'success',
+                    'Fulfillment: Shipment Status': 'delivered',
+                    'Transaction: Kind': 'sale',
+                    'Transaction: Processed At': processed_at,
+                    'Transaction: Amount': total_price,
+                    'Transaction: Status': 'success',
+                    'Payment: Status': 'paid',
+                    'Line: Title': product_title,
+                    'Line: SKU': product_code,  #Product Code or empty if not available
+                    'Line: Variant Barcode': variant_barcode,  #Original Product value
+                    'Line: Tax 1: Price': tax,
+                    'Line: Tax 1: Rate': '0.05',
+                    'Line: Tax 1: Title': 'Sales Tax',
+                    "Line: Name": 'Discount',
+                    'Line: Discount': discount,
                 }
 
                 matrixify_data.append(matrixify_row)
@@ -474,7 +549,11 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
                 product_title = str(row['Product name']).strip()
 
             # Ensure quantity is at least 1
-            quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
+            # quantity = max(1, int(row['Product quantity']) if row['Product quantity'] > 0 else 1)
+            if pd.isna(row['Product quantity']):
+              quantity = 1
+            else:
+              quantity = abs(int(row['Product quantity']))
 
             # Create Matrixify row
             # Handle NaN values in Ticket number
@@ -492,20 +571,53 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
             if pd.notna(row['Product']):
                 variant_barcode = str(row['Product']).strip()
 
+            location = ''
+            if pd.notna(row['Location']):
+                location = str(row['Location']).strip()
+
+            if pd.isna(row['Price ($)']):
+              price = 0
+            else:
+              price = abs(float(row['Price ($)']))
+
+            if pd.isna(row['Tax ($)']):
+              tax = 0
+            else:
+              tax = abs(float(row['Tax ($)']))
+
+            if pd.isna(row['Discount ($)']):
+              discount = 0
+            else:
+              discount = abs(float(row['Discount ($)']))
+
+            total_price = ((price * abs(quantity) ) + tax) - discount
+
             matrixify_row = {
-                'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
-                'Command': 'MERGE',
-                'Line: Command': "MERGE",
                 'Processed At': processed_at,
+                'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
+                'Command': 'REPLACE',
+                'Line: Command': "MERGE",
                 'Customer: Email': customer_email,
                 'Line: Type': 'Line Item',
+                'Line: Quantity': abs(quantity),
+                'Line: Price': float(row['Price ($)']),
+                'Line: Requires Shipping': 'TRUE',
+                'Fulfillment: Location': location,
+                'Fulfillment: Status': 'success',
+                'Fulfillment: Shipment Status': 'delivered',
+                'Transaction: Kind': 'sale',
+                'Transaction: Status': 'success',
+                'Transaction: Processed At': processed_at,
+                'Transaction: Amount': total_price,
+                'Payment: Status': 'paid',
                 'Line: Title': product_title,
                 'Line: SKU': product_code,  # Product Code or empty if not available
                 'Line: Variant Barcode': variant_barcode,  # Original Product value
-                'Line: Quantity': quantity,
-                'Line: Price': float(row['Price ($)']),
-                'Line: Grams': 0,
-                'Line: Requires Shipping': 'TRUE',
+                'Line: Tax 1: Price': tax,
+                'Line: Tax 1: Rate': '0.05',
+                'Line: Tax 1: Title': 'Sales Tax',
+                "Line: Name": 'Discount',
+                'Line: Discount': discount,
             }
 
             matrixify_data.append(matrixify_row)
