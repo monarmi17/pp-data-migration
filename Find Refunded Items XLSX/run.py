@@ -4,8 +4,8 @@ import os
 # --- CONFIG ---
 input_file = input("Enter Excel filename (e.g., orders.xlsx): ").strip()
 base, ext = os.path.splitext(input_file)
-output_all = f"{base}_negative_all{ext}"
-output_only_neg = f"{base}_negative_only{ext}"
+output_all = f"{base}_refund_all{ext}"
+output_only_neg = f"{base}_refund_only{ext}"
 
 # --- STEP 1: Read preview to locate the header row ---
 preview = pd.read_excel(input_file, header=None, dtype=object)
