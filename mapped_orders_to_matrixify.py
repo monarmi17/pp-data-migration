@@ -435,7 +435,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                     'Line: Variant Barcode': variant_barcode,  #Original Product value
                     'Line: Tax 1: Price': tax,
                     'Line: Tax 1: Rate': '0.05',
-                    'Line: Tax 1: Title': 'Sales Tax',
+                    'Line: Tax 1: Title': 'GST',
                     "Line: Name": 'Discount',
                     'Line: Discount': discount,
                 }
@@ -617,7 +617,7 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
                 'Line: Variant Barcode': variant_barcode,  # Original Product value
                 'Line: Tax 1: Price': tax,
                 'Line: Tax 1: Rate': '0.05',
-                'Line: Tax 1: Title': 'Sales Tax',
+                'Line: Tax 1: Title': 'GST',
                 "Line: Name": 'Discount',
                 'Line: Discount': discount,
             }
