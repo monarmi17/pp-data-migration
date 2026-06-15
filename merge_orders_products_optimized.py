@@ -123,26 +123,28 @@ def load_products_data(test_mode=False):
         sys.exit(1)
 
 
-def get_orders_info(test_mode=False, orders_file=None, region_name=None):
+def get_orders_info(test_mode=False, orders_file=None, region_name=None, orders_dir=None):
     """Get basic information about orders file without loading all data."""
     try:
         if test_mode:
             orders_path = Path("datasource/test-data/orders.xlsx")
             skiprows = 0  # Test data has no extra header rows
-        elif orders_file:
-            orders_path = Path(f"datasource/original-data/{orders_file}")
-            skiprows = 2  # Original data has 2 extra header rows to skip
-        elif region_name:
-            # Construct filename from region name
-            # Convert region_name like "auburn_bay" to "Auburn_Bay"
-            formatted_region = '_'.join(word.capitalize() for word in region_name.split('_'))
-            orders_filename = f"Sales_By_Customer_{formatted_region}.xlsx"
-            orders_path = Path(f"datasource/original-data/{orders_filename}")
-            skiprows = 2  # Original data has 2 extra header rows to skip
         else:
-            # Default fallback
-            orders_path = Path("datasource/original-data/orders.xlsx")
-            skiprows = 2  # Original data has 2 extra header rows to skip
+            base_dir = Path(orders_dir or "datasource/original-data")
+            if orders_file:
+                orders_path = base_dir / orders_file
+                skiprows = 2  # Original data has 2 extra header rows to skip
+            elif region_name:
+                # Construct filename from region name
+                # Convert region_name like "auburn_bay" to "Auburn_Bay"
+                formatted_region = '_'.join(word.capitalize() for word in region_name.split('_'))
+                orders_filename = f"Sales_By_Customer_{formatted_region}.xlsx"
+                orders_path = base_dir / orders_filename
+                skiprows = 2  # Original data has 2 extra header rows to skip
+            else:
+                # Default fallback
+                orders_path = base_dir / "orders.xlsx"
+                skiprows = 2  # Original data has 2 extra header rows to skip
 
         if not orders_path.exists():
             raise FileNotFoundError(f"Orders file not found: {orders_path}")
@@ -560,6 +562,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Merge orders and products data with region-specific naming')
     parser.add_argument('--test', action='store_true', help='Run in test mode using test data')
     parser.add_argument('--orders-file', type=str, help='Specific orders file to process (for production mode)')
+    parser.add_argument('--orders-dir', type=str, default='datasource/original-data',
+                        help='Directory containing the orders file (default: datasource/original-data)')
     parser.add_argument('--region', type=str, help='Region name to use for output files (overrides auto-detection)')
     return parser.parse_args()
 
@@ -614,7 +618,9 @@ def main():
     sku_mapping = load_products_data(args.test)
 
     # Get orders file information
-    orders_path, columns, skiprows = get_orders_info(args.test, args.orders_file, region_name)
+    orders_path, columns, skiprows = get_orders_info(
+        args.test, args.orders_file, region_name, args.orders_dir
+    )
 
     # Check file size to determine processing method
     file_size_mb = orders_path.stat().st_size / (1024 * 1024)
