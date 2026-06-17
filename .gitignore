@@ -39,6 +39,24 @@ logs/*
 !logs/.gitkeep
 *.log
 
+# Comparison script outputs (reimport xlsx, JSON logs)
+comparison-reports/*
+!comparison-reports/.gitkeep
+
+# Shopify order exports (split per location + no-location)
+shopify-may-orders-export/*
+!shopify-may-orders-export/.gitkeep
+
+# Shopify orders folder (raw exports + legacy split files)
+shopify-orders/*
+!shopify-orders/.gitkeep
+shopify-orders/raw/*
+!shopify-orders/raw/.gitkeep
+
+# No Scan filtered order exports
+filtered-orders-no-scans/*
+!filtered-orders-no-scans/.gitkeep
+
 # Python cache files
 __pycache__/
 *.py[cod]

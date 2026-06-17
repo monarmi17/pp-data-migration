@@ -51,6 +51,18 @@ import argparse
 # Configure logging (will be updated in main() based on mode)
 logger = logging.getLogger(__name__)
 
+# Static order tag values for No Scan re-import files (see matrixify-ready-orders/airdrie_missing_orders.csv)
+ORDER_TAGS = "test-loyality"
+ORDER_TAGS_COMMAND = "MERGE"
+
+
+def add_order_tags(matrixify_row: dict, with_order_tags: bool) -> dict:
+    """Add static Tags columns when enabled for order re-import."""
+    if with_order_tags:
+        matrixify_row["Tags"] = ORDER_TAGS
+        matrixify_row["Tags Command"] = ORDER_TAGS_COMMAND
+    return matrixify_row
+
 
 def is_valid_email(email):
     """
@@ -283,7 +295,7 @@ def get_orders_info(orders_path):
         sys.exit(1)
 
 
-def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"):
+def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test", with_order_tags=False):
     """Convert orders data to Matrixify CSV format using chunked processing for large files."""
     try:
         logger.info("Starting chunked Matrixify conversion...")
@@ -411,7 +423,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
 
                 total_price = ((price * abs(quantity) ) + tax) - discount
 
-                matrixify_row = {
+                matrixify_row = add_order_tags({
                     'Processed At': processed_at,
                     'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                     'Command': 'REPLACE',
@@ -438,7 +450,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
                     'Line: Tax 1: Title': 'GST',
                     "Line: Name": 'Discount',
                     'Line: Discount': discount,
-                }
+                }, with_order_tags)
 
                 matrixify_data.append(matrixify_row)
 
@@ -514,7 +526,7 @@ def convert_to_matrixify_format_chunked(orders_path, columns, region_name="test"
         raise
 
 
-def convert_to_matrixify_format_simple(orders_df, region_name="test"):
+def convert_to_matrixify_format_simple(orders_df, region_name="test", with_order_tags=False):
     """Convert orders data to Matrixify CSV format for small datasets."""
     try:
         logger.info("Converting to Matrixify format (simple processing)...")
@@ -593,7 +605,7 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
 
             total_price = ((price * abs(quantity) ) + tax) - discount
 
-            matrixify_row = {
+            matrixify_row = add_order_tags({
                 'Processed At': processed_at,
                 'Name': str(int(ticket_number)),  # Convert to string, ensure no decimals
                 'Command': 'REPLACE',
@@ -620,7 +632,7 @@ def convert_to_matrixify_format_simple(orders_df, region_name="test"):
                 'Line: Tax 1: Title': 'GST',
                 "Line: Name": 'Discount',
                 'Line: Discount': discount,
-            }
+            }, with_order_tags)
 
             matrixify_data.append(matrixify_row)
 
@@ -700,7 +712,8 @@ def validate_output(output_path):
             'Line: Grams', 'Line: Requires Shipping', 'Line: Vendor',
             'Transaction: Kind', 'Transaction: Processed At', 'Transaction: Amount',
             'Payment: Status', 'Fulfillment: Status', 'Fulfillment: Processed At',
-            'Fulfillment: Tracking Number', 'Fulfillment: Shipment Status'
+            'Fulfillment: Tracking Number', 'Fulfillment: Shipment Status',
+            'Tags', 'Tags Command',
         ]
 
         missing_columns = [col for col in expected_columns if col not in sample_df.columns]
@@ -774,6 +787,11 @@ def parse_arguments():
     parser.add_argument('--test', action='store_true', help='Run in test mode')
     parser.add_argument('--region', type=str, help='Specific region to process')
     parser.add_argument('--orders-file', type=str, help='Orders file name to extract region from')
+    parser.add_argument(
+        '--with-order-tags',
+        action='store_true',
+        help='Include static Tags and Tags Command columns for order re-import',
+    )
     return parser.parse_args()
 
 
@@ -847,7 +865,9 @@ def main():
                 orders_df = pd.read_excel(orders_path, engine='openpyxl')
 
             # Convert to Matrixify format
-            matrixify_df = convert_to_matrixify_format_simple(orders_df, region_name)
+            matrixify_df = convert_to_matrixify_format_simple(
+                orders_df, region_name, args.with_order_tags
+            )
 
             # Save to CSV
             output_path = save_matrixify_csv(matrixify_df, region_name, args.test)
@@ -869,7 +889,9 @@ def main():
             logger.info("Large dataset detected - using chunked processing method")
 
             # Convert to Matrixify format using chunked processing
-            output_path, total_processed, total_mapped, total_unmapped = convert_to_matrixify_format_chunked(orders_path, columns, region_name)
+            output_path, total_processed, total_mapped, total_unmapped = convert_to_matrixify_format_chunked(
+                orders_path, columns, region_name, args.with_order_tags
+            )
 
             # Validate output
             validate_output(output_path)

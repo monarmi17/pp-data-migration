@@ -147,6 +147,8 @@ def process_file(
 
     step += 1
     matrixify_cmd = [python_executable, MATRIXIFY_SCRIPT, "--region", merge_region]
+    if filter_no_scans:
+        matrixify_cmd.append("--with-order-tags")
     print(f"\nStep {step} — Convert to Matrixify format")
     print(f"  Region: {merge_region}")
     matrixify_code = run_step(matrixify_cmd, dry_run)

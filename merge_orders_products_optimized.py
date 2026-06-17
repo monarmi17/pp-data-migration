@@ -7,7 +7,7 @@ information to the orders data. Optimized for handling large datasets (500k+ ord
 
 Supports test mode and production mode:
 - Test mode: Uses test-data/orders.xlsx and test-data/products.xlsx
-- Production mode: Uses original-data/<region>_orders.xlsx and original-data/products.xlsx
+- Production mode: Uses original-data/<region>_orders.xlsx and original-data/Products.csv
 
 Key optimizations:
 - Memory-efficient chunked processing
@@ -68,55 +68,219 @@ def extract_region_from_filename(filename):
         return "unknown_region"
 
 
-def load_products_data(test_mode=False):
-    """Load and optimize products data for efficient lookups."""
+# Configuration for large dataset processing
+CHUNK_SIZE = 50000  # Process orders in chunks of 50k rows
+PROGRESS_INTERVAL = 10000  # Show progress every 10k rows
+DEFAULT_PRODUCTS_FILE = "Products.csv"
+ORIGINAL_DATA_DIR = Path("datasource/original-data")
+
+
+def validate_orders_filename(orders_file: str) -> None:
+    """Reject Excel lock/temp files (~$...) mistaken for real order workbooks."""
+    if orders_file.startswith("~$"):
+        raise ValueError(
+            f"'{orders_file}' is an Excel temporary lock file (created while the "
+            "workbook is open), not the actual orders file. Close the file in "
+            "Excel and pass the real filename, e.g. "
+            "Sales_By_Customer_Aspen_May_reimport.xlsx"
+        )
+
+
+def normalize_barcode(value):
+    """Normalize a barcode/SKU value for lookup (12-digit zero-padded when numeric)."""
+    if pd.isna(value):
+        return None
+
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return None
+
+    if text.endswith(".0"):
+        text = text[:-2]
+
+    try:
+        return str(int(float(text))).zfill(12)
+    except (ValueError, OverflowError):
+        return text
+
+
+def barcode_lookup_key(variant_barcode):
+    """Build lookup key from Variant Barcode; use only the part before '-' when present."""
+    if pd.isna(variant_barcode):
+        return None
+
+    text = str(variant_barcode).strip()
+    if not text or text.lower() == "nan":
+        return None
+
+    if "-" in text:
+        text = text.split("-", 1)[0].strip()
+
+    return normalize_barcode(text)
+
+
+def normalize_order_product(value):
+    """Normalize order line Product values for barcode lookup."""
+    return normalize_barcode(value)
+
+
+def apply_product_mapping(chunk_df, product_mapping):
+    """Add Product Code and update Product with exact catalog barcode when matched."""
+    chunk_df["Product_normalized"] = chunk_df["Product"].map(normalize_order_product)
+
+    chunk_df["Product Code"] = chunk_df["Product_normalized"].map(
+        lambda key: product_mapping[key]["product_code"]
+        if key and key in product_mapping
+        else None
+    )
+
+    def resolve_product(row):
+        key = row["Product_normalized"]
+        if key and key in product_mapping:
+            exact_barcode = product_mapping[key].get("variant_barcode")
+            if exact_barcode:
+                return exact_barcode
+        return row["Product"]
+
+    chunk_df["Product"] = chunk_df.apply(resolve_product, axis=1)
+    return chunk_df.drop(columns=["Product_normalized"])
+
+
+def _add_mapping_entry(product_mapping, lookup_key, product_code, variant_barcode):
+    """Insert or replace a barcode lookup entry."""
+    if not lookup_key or pd.isna(product_code) or str(product_code).strip().lower() == "nan":
+        return
+
+    product_code = str(product_code).strip()
+    variant_barcode = None if pd.isna(variant_barcode) else str(variant_barcode).strip()
+    new_entry = {
+        "product_code": product_code,
+        "variant_barcode": variant_barcode,
+    }
+
+    existing = product_mapping.get(lookup_key)
+    if existing is None:
+        product_mapping[lookup_key] = new_entry
+        return
+
+    existing_has_dash = "-" in str(existing.get("variant_barcode") or "")
+    new_has_dash = "-" in str(variant_barcode or "")
+    if new_has_dash and not existing_has_dash:
+        product_mapping[lookup_key] = new_entry
+
+
+def load_products_from_csv(products_path):
+    """Load Shopify Products.csv and build barcode -> SKU mapping."""
+    last_error = None
+    for encoding in ("utf-8", "latin-1", "cp1252"):
+        try:
+            products_df = pd.read_csv(
+                products_path,
+                usecols=["Variant Barcode", "Variant SKU"],
+                dtype=str,
+                encoding=encoding,
+            )
+            break
+        except UnicodeDecodeError as exc:
+            last_error = exc
+    else:
+        raise UnicodeDecodeError(
+            "unknown",
+            b"",
+            0,
+            1,
+            f"Could not decode {products_path}: {last_error}",
+        )
+
+    for column in ("Variant Barcode", "Variant SKU"):
+        if column not in products_df.columns:
+            raise ValueError(f"'{column}' column not found in {products_path}")
+
+    product_mapping = {}
+    dash_entries = 0
+
+    for _, row in products_df.iterrows():
+        lookup_key = barcode_lookup_key(row["Variant Barcode"])
+        if not lookup_key:
+            continue
+
+        if "-" in str(row["Variant Barcode"]):
+            dash_entries += 1
+
+        _add_mapping_entry(
+            product_mapping,
+            lookup_key,
+            row["Variant SKU"],
+            row["Variant Barcode"],
+        )
+
+    logger.info(
+        "Created barcode mapping with %s entries (%s dash-prefixed barcodes)",
+        f"{len(product_mapping):,}",
+        f"{dash_entries:,}",
+    )
+    return product_mapping
+
+
+def load_products_from_xlsx(products_path):
+    """Load legacy products.xlsx and build barcode -> Product Code mapping."""
+    products_df = pd.read_excel(
+        products_path,
+        usecols=["SKU", "Product Code"],
+        engine="openpyxl",
+    )
+
+    for column in ("SKU", "Product Code"):
+        if column not in products_df.columns:
+            raise ValueError(f"'{column}' column not found in products data")
+
+    products_df["SKU"] = products_df["SKU"].map(normalize_barcode)
+
+    initial_count = len(products_df)
+    products_df = products_df.drop_duplicates(subset=["SKU"], keep="first")
+    if len(products_df) < initial_count:
+        logger.warning(
+            "Removed %s duplicate SKUs from products data",
+            initial_count - len(products_df),
+        )
+
+    product_mapping = {
+        row["SKU"]: {
+            "product_code": str(row["Product Code"]).strip(),
+            "variant_barcode": None,
+        }
+        for _, row in products_df.iterrows()
+        if row["SKU"] and pd.notna(row["Product Code"])
+    }
+
+    logger.info("Created SKU mapping with %s entries", f"{len(product_mapping):,}")
+    return product_mapping
+
+
+def load_products_data(test_mode=False, products_file=None):
+    """Load products reference and build barcode/SKU lookup mapping."""
     try:
         if test_mode:
             products_path = Path("datasource/test-data/products.xlsx")
         else:
-            products_path = Path("datasource/original-data/products.xlsx")
+            products_path = ORIGINAL_DATA_DIR / (products_file or DEFAULT_PRODUCTS_FILE)
 
         if not products_path.exists():
             raise FileNotFoundError(f"Products file not found: {products_path}")
 
-        logger.info(f"Loading products data from {products_path}...")
+        logger.info("Loading products data from %s...", products_path)
         start_time = time.time()
 
-        # Load only required columns to save memory
-        products_df = pd.read_excel(
-            products_path,
-            usecols=['SKU', 'Product Code'],
-            engine='openpyxl'
-        )
+        if products_path.suffix.lower() == ".csv":
+            product_mapping = load_products_from_csv(products_path)
+        else:
+            product_mapping = load_products_from_xlsx(products_path)
 
         load_time = time.time() - start_time
-        logger.info(f"Loaded products data: {len(products_df):,} records in {load_time:.2f} seconds")
-
-        # Check for required columns
-        if 'SKU' not in products_df.columns:
-            raise ValueError("'SKU' column not found in products data")
-        if 'Product Code' not in products_df.columns:
-            raise ValueError("'Product Code' column not found in products data")
-
-        # Normalize SKU format - ensure all SKUs are strings and zero-padded to 12 digits
-        products_df['SKU'] = pd.to_numeric(products_df['SKU'], errors='coerce').fillna(0).astype('int64').astype(str).str.zfill(12)
-
-        # Remove any duplicate SKUs and keep first occurrence
-        initial_count = len(products_df)
-        products_df = products_df.drop_duplicates(subset=['SKU'], keep='first')
-        if len(products_df) < initial_count:
-            logger.warning(f"Removed {initial_count - len(products_df)} duplicate SKUs from products data")
-
-        # Create optimized mapping dictionary
-        logger.info("Creating SKU to Product Code mapping...")
-        sku_to_product_code = dict(zip(products_df['SKU'], products_df['Product Code']))
-
-        # Clean up products DataFrame to free memory
-        del products_df
+        logger.info("Loaded products reference in %.2f seconds", load_time)
         gc.collect()
 
-        logger.info(f"Created SKU mapping with {len(sku_to_product_code):,} entries")
-        return sku_to_product_code
+        return product_mapping
 
     except Exception as e:
         logger.error(f"Error loading products data: {e}")
@@ -132,6 +296,7 @@ def get_orders_info(test_mode=False, orders_file=None, region_name=None, orders_
         else:
             base_dir = Path(orders_dir or "datasource/original-data")
             if orders_file:
+                validate_orders_filename(orders_file)
                 orders_path = base_dir / orders_file
                 skiprows = 2  # Original data has 2 extra header rows to skip
             elif region_name:
@@ -169,18 +334,10 @@ def get_orders_info(test_mode=False, orders_file=None, region_name=None, orders_
         sys.exit(1)
 
 
-def process_orders_chunk(chunk_df, sku_mapping, chunk_num, total_chunks):
+def process_orders_chunk(chunk_df, product_mapping, chunk_num, total_chunks):
     """Process a single chunk of orders data."""
     try:
-        # Normalize Product column format to match SKU format
-        # Handle NaN/inf values and convert to integer first (to remove decimal), then to string and pad with leading zeros to 12 digits
-        chunk_df['Product_normalized'] = pd.to_numeric(chunk_df['Product'], errors='coerce').fillna(0).astype('int64').astype(str).str.zfill(12)
-
-        # Add Product Code column using vectorized mapping
-        chunk_df['Product Code'] = chunk_df['Product_normalized'].map(sku_mapping)
-
-        # Drop the temporary normalized column
-        chunk_df = chunk_df.drop(columns=['Product_normalized'])
+        chunk_df = apply_product_mapping(chunk_df, product_mapping)
 
         # Count successful mappings in this chunk
         mapped_count = chunk_df['Product Code'].notna().sum()
@@ -243,7 +400,7 @@ def save_error_rows(error_rows_list, region_name, step_name):
         logger.warning(f"Could not save error rows: {e}")
 
 
-def merge_data_simple(orders_path, columns, sku_mapping, region_name="test", skiprows=0):
+def merge_data_simple(orders_path, columns, product_mapping, region_name="test", skiprows=0):
     """
     Simple merge for small datasets - loads entire file into memory.
     """
@@ -257,12 +414,7 @@ def merge_data_simple(orders_path, columns, sku_mapping, region_name="test", ski
         # Track error/ignored rows
         error_rows = []
 
-        # Normalize Product column format to match SKU format
-        # Handle NaN/inf values and convert to integer first (to remove decimal), then to string and pad with leading zeros to 12 digits
-        orders_df['Product_normalized'] = pd.to_numeric(orders_df['Product'], errors='coerce').fillna(0).astype('int64').astype(str).str.zfill(12)
-
-        # Add Product Code column using vectorized mapping
-        orders_df['Product Code'] = orders_df['Product_normalized'].map(sku_mapping)
+        orders_df = apply_product_mapping(orders_df, product_mapping)
 
         # Identify rows with missing Product Code (unmapped SKUs)
         unmapped_mask = orders_df['Product Code'].isna()
@@ -270,9 +422,6 @@ def merge_data_simple(orders_path, columns, sku_mapping, region_name="test", ski
             unmapped_rows = orders_df[unmapped_mask].copy()
             unmapped_rows['Error_Reason'] = 'Product SKU not found in products database'
             error_rows.append(unmapped_rows)
-
-        # Drop the temporary normalized column
-        orders_df = orders_df.drop(columns=['Product_normalized'])
 
         # Count mappings
         total_mapped = orders_df['Product Code'].notna().sum()
@@ -346,7 +495,7 @@ def merge_data_simple(orders_path, columns, sku_mapping, region_name="test", ski
         sys.exit(1)
 
 
-def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test", skiprows=0):
+def merge_data_chunked(orders_path, columns, product_mapping, region_name="test", skiprows=0):
     """
     Merge orders and products data using chunked processing for memory efficiency.
     Since pd.read_excel doesn't support chunksize, we'll convert to CSV first and then process in chunks.
@@ -405,7 +554,7 @@ def merge_data_chunked(orders_path, columns, sku_mapping, region_name="test", sk
 
             # Process the chunk
             processed_chunk, mapped_count, unmapped_count = process_orders_chunk(
-                chunk_df, sku_mapping, chunk_num, total_chunks
+                chunk_df, product_mapping, chunk_num, total_chunks
             )
 
             # Track error rows for this chunk
@@ -564,6 +713,8 @@ def parse_arguments():
     parser.add_argument('--orders-file', type=str, help='Specific orders file to process (for production mode)')
     parser.add_argument('--orders-dir', type=str, default='datasource/original-data',
                         help='Directory containing the orders file (default: datasource/original-data)')
+    parser.add_argument('--products-file', type=str, default=DEFAULT_PRODUCTS_FILE,
+                        help=f'Products reference file in datasource/original-data/ (default: {DEFAULT_PRODUCTS_FILE})')
     parser.add_argument('--region', type=str, help='Region name to use for output files (overrides auto-detection)')
     return parser.parse_args()
 
@@ -615,7 +766,7 @@ def main():
     logger.info("="*60)
 
     # Load products data and create mapping
-    sku_mapping = load_products_data(args.test)
+    product_mapping = load_products_data(args.test, args.products_file)
 
     # Get orders file information
     orders_path, columns, skiprows = get_orders_info(
@@ -629,12 +780,12 @@ def main():
     if file_size_mb < 10:  # Small file - use simple approach
         logger.info("Small dataset detected - using simple processing method")
         total_processed, total_mapped, total_unmapped = merge_data_simple(
-            orders_path, columns, sku_mapping, region_name, skiprows
+            orders_path, columns, product_mapping, region_name, skiprows
         )
     else:  # Large file - use chunked processing
         logger.info("Large dataset detected - using chunked processing method")
         total_processed, total_mapped, total_unmapped = merge_data_chunked(
-            orders_path, columns, sku_mapping, region_name, skiprows
+            orders_path, columns, product_mapping, region_name, skiprows
         )
 
     # Validate output
